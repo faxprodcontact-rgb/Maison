@@ -1,11 +1,12 @@
-import { Check, Pencil, Plus } from 'lucide-react'
+import { Check, Clock, Leaf, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
-import { Champ, Chargement, Erreur, Groupe, Liste, Pastille, Section, TitrePage, Vide } from '../components/ui'
+import { Chargement, Erreur, Pastille, TitrePage } from '../components/ui'
 import { majuscule } from '../lib/dates'
 import { useFoyer } from '../lib/foyer'
-import { RAYONS, devinerRayon, normaliser, rayon, separerQuantite } from '../lib/rayons'
+import { devinerRayon, normaliser, rayon, separerQuantite } from '../lib/rayons'
+import { type Repas, ideesDeLaSemaine } from '../lib/repas'
 import { table } from '../lib/supabase'
 import type { Article, ArticleCatalogue } from '../lib/types'
 import { useLive } from '../lib/useLive'
@@ -14,157 +15,137 @@ export function Courses() {
   const { moi, autre } = useFoyer()
   const toast = useToast()
   const [saisie, setSaisie] = useState('')
-  const [edition, setEdition] = useState<Article | null>(null)
+  const [confirmer, setConfirmer] = useState(false)
+  const [page, setPage] = useState(0)
 
   const { lignes: articles, setLignes, erreur, recharger } = useLive<Article>('courses', () =>
     table('courses').select('*').order('cree_le'),
   )
   const { lignes: catalogue } = useLive<ArticleCatalogue>('courses_catalogue', () =>
-    table('courses_catalogue')
-      .select('*')
-      .order('nb_achats', { ascending: false })
-      .order('dernier_achat', { ascending: false, nullsFirst: false })
-      .limit(400),
+    table('courses_catalogue').select('*').order('nb_achats', { ascending: false }).limit(400),
   )
 
-  const aAcheter = useMemo(() => (articles ?? []).filter((a) => !a.coche), [articles])
-  const panier = useMemo(
-    () => (articles ?? []).filter((a) => a.coche).sort((a, b) => (b.coche_le ?? '').localeCompare(a.coche_le ?? '')),
+  // À prendre d'abord, puis ce qui est déjà dans le panier du drive
+  const liste = useMemo(
+    () => [...(articles ?? [])].sort((a, b) => Number(a.coche) - Number(b.coche) || a.cree_le.localeCompare(b.cree_le)),
     [articles],
   )
-  const surLaListe = useMemo(() => new Set(aAcheter.map((a) => normaliser(a.nom))), [aAcheter])
-
-  const parRayon = useMemo(
-    () =>
-      RAYONS.map((r) => ({ rayon: r, articles: aAcheter.filter((a) => rayon(a.rayon).cle === r.cle) })).filter(
-        (g) => g.articles.length > 0,
-      ),
-    [aAcheter],
-  )
+  const restants = liste.filter((a) => !a.coche).length
+  const dejaSurLaListe = useMemo(() => new Set((articles ?? []).map((a) => normaliser(a.nom))), [articles])
 
   const recherche = normaliser(separerQuantite(saisie).nom)
   const suggestions = useMemo(() => {
-    if (!recherche) return []
+    if (recherche.length < 2) return []
     return (catalogue ?? [])
-      .filter((c) => normaliser(c.nom).includes(recherche) && !surLaListe.has(normaliser(c.nom)))
-      .slice(0, 5)
-  }, [catalogue, recherche, surLaListe])
+      .filter((c) => normaliser(c.nom).includes(recherche) && !dejaSurLaListe.has(normaliser(c.nom)))
+      .slice(0, 4)
+  }, [catalogue, recherche, dejaSurLaListe])
 
-  const habituels = useMemo(
-    () => (catalogue ?? []).filter((c) => c.nb_achats > 0 && !surLaListe.has(normaliser(c.nom))).slice(0, 12),
-    [catalogue, surLaListe],
-  )
+  const idees = useMemo(() => ideesDeLaSemaine(page), [page])
 
-  function signalerErreur(message: string) {
+  function erreurReseau(message: string) {
     toast(`Modification non enregistrée : ${message}`)
     void recharger()
   }
 
-  async function ajouter(texte: string, rayonImpose?: string) {
-    const { nom: brut, quantite } = separerQuantite(texte)
-    const nom = majuscule(brut.trim())
-    if (!nom) return
-    const n = normaliser(nom)
-    const existant = articles?.find((a) => normaliser(a.nom) === n)
+  /** Ajoute des articles (ceux déjà sur la liste sont ignorés). Renvoie le nombre ajouté. */
+  async function ajouter(textes: string[]): Promise<number> {
+    const nouveaux: Article[] = []
+    const vus = new Set(dejaSurLaListe)
+    for (const texte of textes) {
+      const { nom: brut, quantite } = separerQuantite(texte)
+      const nom = majuscule(brut.trim())
+      const n = normaliser(nom)
+      if (!nom || vus.has(n)) continue
+      vus.add(n)
+      const connu = catalogue?.find((c) => normaliser(c.nom) === n)
+      nouveaux.push({
+        id: crypto.randomUUID(),
+        nom: connu?.nom ?? nom,
+        quantite,
+        rayon: connu?.rayon ?? devinerRayon(nom),
+        coche: false,
+        ajoute_par: moi.cle,
+        cree_le: new Date().toISOString(),
+        coche_le: null,
+      })
+    }
+    if (nouveaux.length === 0) return 0
+    setLignes((l) => [...(l ?? []), ...nouveaux])
+    const { error } = await table('courses').insert(
+      nouveaux.map(({ id, nom, quantite, rayon: r, ajoute_par }) => ({ id, nom, quantite, rayon: r, ajoute_par })),
+    )
+    if (error) erreurReseau(error.message)
+    return nouveaux.length
+  }
+
+  async function soumettre(e: FormEvent) {
+    e.preventDefault()
+    const texte = saisie.trim()
+    if (!texte) return
     setSaisie('')
-
-    if (existant && !existant.coche) {
-      toast(`${existant.nom} est déjà sur la liste.`)
-      return
-    }
-    if (existant) {
-      // Déjà dans le panier : on le remet sur la liste
-      setLignes((l) => l?.map((a) => (a.id === existant.id ? { ...a, coche: false, coche_le: null, quantite } : a)) ?? l)
-      const { error } = await table('courses')
-        .update({ coche: false, coche_le: null, quantite })
-        .eq('id', existant.id)
-      if (error) signalerErreur(error.message)
-      return
-    }
-
-    const connu = catalogue?.find((c) => normaliser(c.nom) === n)
-    const nouvel: Article = {
-      id: crypto.randomUUID(),
-      nom: connu?.nom ?? nom,
-      quantite,
-      rayon: rayonImpose ?? connu?.rayon ?? devinerRayon(nom),
-      coche: false,
-      ajoute_par: moi.cle,
-      cree_le: new Date().toISOString(),
-      coche_le: null,
-    }
-    setLignes((l) => [...(l ?? []), nouvel])
-    const { error } = await table('courses').insert({
-      id: nouvel.id,
-      nom: nouvel.nom,
-      quantite: nouvel.quantite,
-      rayon: nouvel.rayon,
-      ajoute_par: nouvel.ajoute_par,
-    })
-    if (error) signalerErreur(error.message)
+    const n = await ajouter([texte])
+    if (n === 0) toast(`${majuscule(separerQuantite(texte).nom)} est déjà sur la liste.`)
   }
 
-  async function basculer(article: Article) {
-    const coche = !article.coche
+  async function basculer(a: Article) {
+    const coche = !a.coche
     const coche_le = coche ? new Date().toISOString() : null
-    setLignes((l) => l?.map((a) => (a.id === article.id ? { ...a, coche, coche_le } : a)) ?? l)
-    const { error } = await table('courses').update({ coche, coche_le }).eq('id', article.id)
-    if (error) signalerErreur(error.message)
+    setLignes((l) => l?.map((x) => (x.id === a.id ? { ...x, coche, coche_le } : x)) ?? l)
+    const { error } = await table('courses').update({ coche, coche_le }).eq('id', a.id)
+    if (error) erreurReseau(error.message)
   }
 
-  async function viderPanier() {
-    const retires = panier
-    setLignes((l) => l?.filter((a) => !a.coche) ?? l)
+  async function retirer(a: Article) {
+    setLignes((l) => l?.filter((x) => x.id !== a.id) ?? l)
+    const { error } = await table('courses').delete().eq('id', a.id)
+    if (error) erreurReseau(error.message)
+  }
+
+  async function viderLaListe() {
+    const tout = articles ?? []
+    setConfirmer(false)
+    setLignes([])
     const { error } = await table('courses')
       .delete()
       .in(
         'id',
-        retires.map((a) => a.id),
+        tout.map((a) => a.id),
       )
-    if (error) return signalerErreur(error.message)
-    toast(`Panier vidé (${retires.length} article${retires.length > 1 ? 's' : ''}).`, {
-      libelle: 'Annuler',
-      faire: async () => {
-        const { error: e } = await table('courses').insert(retires)
-        if (e) signalerErreur(e.message)
-        else void recharger()
-      },
-    })
+    if (error) return erreurReseau(error.message)
+    toast('La liste est vide, prête pour le prochain drive.')
   }
 
-  function soumettre(e: FormEvent) {
-    e.preventDefault()
-    void ajouter(saisie)
+  async function ajouterRepas(r: Repas) {
+    const n = await ajouter(r.ingredients)
+    toast(
+      n === 0
+        ? `Tout ce qu'il faut pour « ${r.nom} » est déjà sur la liste.`
+        : `${n} ingrédient${n > 1 ? 's' : ''} pour « ${r.nom} » ajouté${n > 1 ? 's' : ''}.`,
+    )
   }
 
   return (
     <>
-      <TitrePage
-        apres={
-          aAcheter.length > 0 && (
-            <span className="nombre pb-1 text-encre-2">
-              {aAcheter.length} à acheter
-            </span>
-          )
-        }
-      >
+      <TitrePage apres={restants > 0 && <span className="nombre pb-1 text-encre-2">{restants} à prendre</span>}>
         Courses
       </TitrePage>
+      <p className="-mt-2 px-5 pb-4 text-encre-2">Ce qu'il ne faut pas oublier pour le prochain drive.</p>
 
       <div className="sticky top-0 z-20 bg-fond px-3 pt-[env(safe-area-inset-top)] pb-3">
-        <form onSubmit={soumettre} className="relative flex gap-2">
+        <form onSubmit={soumettre} className="flex gap-2 rounded-[1.3rem] bg-surface p-2 shadow-[0_8px_24px_-18px_rgb(0_0_0/0.5)]">
           <input
-            className="champ flex-1 !bg-surface"
-            placeholder="Ajouter un article, ex. 2 baguettes"
+            className="min-w-0 flex-1 bg-transparent px-3 text-[1.05rem] outline-none placeholder:text-encre-3"
+            placeholder="Lait, 2 baguettes, idée de repas…"
             value={saisie}
             onChange={(e) => setSaisie(e.target.value)}
             enterKeyHint="done"
             autoComplete="off"
-            aria-label="Article à ajouter"
+            aria-label="Ajouter à la liste"
           />
           <button
             type="submit"
-            className="grid w-13 shrink-0 place-items-center rounded-[0.9rem] bg-encre text-fond disabled:opacity-40"
+            className="grid size-12 shrink-0 place-items-center rounded-[0.95rem] bg-encre text-fond transition-opacity disabled:opacity-30"
             disabled={!saisie.trim()}
             aria-label="Ajouter à la liste"
           >
@@ -172,219 +153,157 @@ export function Courses() {
           </button>
         </form>
         {suggestions.length > 0 && (
-          <ul className="liste mt-2 overflow-hidden rounded-2xl bg-surface shadow-lg">
-            {suggestions.map((s) => {
-              const r = rayon(s.rayon)
-              return (
-                <li key={s.nom_normalise}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left"
-                    onClick={() => {
-                      const { quantite } = separerQuantite(saisie)
-                      void ajouter(quantite ? `${quantite} ${s.nom}` : s.nom, s.rayon)
-                    }}
-                  >
-                    <r.icone size={18} className="text-encre-3" />
-                    <span className="flex-1">{s.nom}</span>
-                    <span className="text-[0.85rem] text-encre-3">{r.nom}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+          <div className="mt-2 flex flex-wrap gap-2 px-1">
+            {suggestions.map((s) => (
+              <button
+                key={s.nom_normalise}
+                type="button"
+                className="puce"
+                onClick={() => {
+                  const { quantite } = separerQuantite(saisie)
+                  setSaisie('')
+                  void ajouter([quantite ? `${quantite} ${s.nom}` : s.nom])
+                }}
+              >
+                <Plus size={14} className="text-encre-3" /> {s.nom}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
       {erreur && <Erreur message={erreur} />}
       {!articles && !erreur && <Chargement />}
 
-      {articles && !saisie && habituels.length > 0 && (
-        <div className="mb-5">
-          <p className="px-5 pb-2 text-[0.95rem] font-semibold text-encre-2">Souvent achetés</p>
-          <div className="flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
-            {habituels.map((h) => (
-              <button
-                key={h.nom_normalise}
-                type="button"
-                className="puce shrink-0"
-                onClick={() => void ajouter(h.nom, h.rayon)}
-              >
-                <Plus size={15} className="text-encre-3" />
-                {h.nom}
-              </button>
-            ))}
+      {articles && liste.length === 0 && (
+        <div className="mx-3 rounded-[1.4rem] border-2 border-dashed border-trait px-5 py-8 text-center">
+          <p className="text-[1.25rem] font-semibold">La liste est vide.</p>
+          <p className="mt-2 text-encre-2">
+            Notez ici ce qu'il faut racheter ou une idée de repas : {autre.prenom} le verra tout de suite.
+          </p>
+        </div>
+      )}
+
+      {liste.length > 0 && (
+        <div className="mx-3 overflow-hidden rounded-[1.4rem] bg-surface shadow-[0_10px_30px_-26px_rgb(0_0_0/0.6)]">
+          <ul className="liste">
+            {liste.map((a) => {
+              const r = rayon(a.rayon)
+              return (
+                <li key={a.id} className="article flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => void basculer(a)}
+                    aria-pressed={a.coche}
+                    className="flex min-h-15 flex-1 items-center gap-3 py-2 pl-3 text-left"
+                  >
+                    <span
+                      className={`grid size-10 shrink-0 place-items-center rounded-full ${a.coche ? 'bg-encre text-fond' : 'bg-surface-2 text-encre-2'}`}
+                    >
+                      {a.coche ? <Check size={19} strokeWidth={3} /> : <r.icone size={18} />}
+                    </span>
+                    <span className={`flex-1 text-[1.05rem] leading-snug ${a.coche ? 'text-encre-3 line-through' : ''}`}>
+                      {a.nom}
+                      {a.quantite && <span className="nombre ml-2 text-encre-3">{a.quantite}</span>}
+                    </span>
+                  </button>
+                  {!a.coche && <Pastille cle={a.ajoute_par} taille={18} />}
+                  <button
+                    type="button"
+                    onClick={() => void retirer(a)}
+                    className="grid size-12 shrink-0 place-items-center text-encre-3"
+                    aria-label={`Retirer ${a.nom}`}
+                  >
+                    <X size={18} />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="flex items-center border-t border-trait px-4 py-3">
+            <span className="flex-1 text-[0.9rem] text-encre-2">
+              {liste.length} article{liste.length > 1 ? 's' : ''}
+              {liste.length - restants > 0 && `, dont ${liste.length - restants} déjà pris`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirmer(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[0.9rem] font-semibold text-retard"
+            >
+              <Trash2 size={16} /> Vider la liste
+            </button>
           </div>
         </div>
       )}
 
-      {articles && aAcheter.length === 0 && (
-        <Vide titre={panier.length > 0 ? 'Tout est dans le panier.' : 'La liste est vide.'}>
-          {panier.length === 0 &&
-            `Ajoutez un article ci-dessus : il est rangé tout seul dans le bon rayon, et ${autre.prenom} le voit aussitôt.`}
-        </Vide>
-      )}
-
-      {parRayon.map(({ rayon: r, articles: liste }) => (
-        <Section
-          key={r.cle}
-          titre={
-            <span className="flex items-center gap-2">
-              <r.icone size={17} />
-              {r.nom}
-            </span>
-          }
-        >
-          <Liste>
-            {liste.map((a) => (
-              <LigneArticle key={a.id} article={a} basculer={basculer} modifier={setEdition} />
-            ))}
-          </Liste>
-        </Section>
-      ))}
-
-      {panier.length > 0 && (
-        <Section
-          titre={`Dans le panier (${panier.length})`}
-          apres={
-            <button type="button" className="text-[0.95rem] font-semibold underline underline-offset-4" onClick={() => void viderPanier()}>
-              Vider le panier
-            </button>
-          }
-        >
-          <Liste>
-            {panier.map((a) => (
-              <LigneArticle key={a.id} article={a} basculer={basculer} modifier={setEdition} />
-            ))}
-          </Liste>
-        </Section>
-      )}
-
-      <Sheet ouvert={edition !== null} fermer={() => setEdition(null)} titre="Modifier l'article">
-        {edition && (
-          <FormulaireArticle
-            article={edition}
-            fini={() => setEdition(null)}
-            erreur={signalerErreur}
-            appliquer={(maj) => setLignes((l) => l?.map((a) => (a.id === edition.id ? { ...a, ...maj } : a)) ?? l)}
-            retirer={() => setLignes((l) => l?.filter((a) => a.id !== edition.id) ?? l)}
-          />
-        )}
-      </Sheet>
-    </>
-  )
-}
-
-function LigneArticle({
-  article,
-  basculer,
-  modifier,
-}: {
-  article: Article
-  basculer: (a: Article) => void
-  modifier: (a: Article) => void
-}) {
-  return (
-    <li className="flex items-center">
-      <button
-        type="button"
-        className="flex min-h-14 flex-1 items-center gap-3.5 py-2.5 pl-4 text-left"
-        onClick={() => basculer(article)}
-        aria-pressed={article.coche}
-      >
-        <span className={`case ${article.coche ? 'text-encre-3' : 'text-encre'}`} data-coche={article.coche}>
-          {article.coche && <Check size={16} strokeWidth={3} />}
-        </span>
-        <span className={`flex-1 text-[1.05rem] ${article.coche ? 'text-encre-3 line-through' : ''}`}>
-          {article.nom}
-          {article.quantite && <span className="nombre ml-2 text-encre-3">{article.quantite}</span>}
-        </span>
-      </button>
-      {!article.coche && <Pastille cle={article.ajoute_par} taille={18} />}
-      <button
-        type="button"
-        className="grid size-12 shrink-0 place-items-center text-encre-3"
-        onClick={() => modifier(article)}
-        aria-label={`Modifier ${article.nom}`}
-      >
-        <Pencil size={17} />
-      </button>
-    </li>
-  )
-}
-
-function FormulaireArticle({
-  article,
-  fini,
-  erreur,
-  appliquer,
-  retirer,
-}: {
-  article: Article
-  fini: () => void
-  erreur: (m: string) => void
-  appliquer: (maj: Partial<Article>) => void
-  retirer: () => void
-}) {
-  const [nom, setNom] = useState(article.nom)
-  const [quantite, setQuantite] = useState(article.quantite ?? '')
-  const [rayonChoisi, setRayon] = useState(rayon(article.rayon).cle)
-
-  async function enregistrer(e: FormEvent) {
-    e.preventDefault()
-    if (!nom.trim()) return
-    const maj = { nom: majuscule(nom.trim()), quantite: quantite.trim() || null, rayon: rayonChoisi }
-    appliquer(maj)
-    fini()
-    const { error } = await table('courses').update(maj).eq('id', article.id)
-    if (error) erreur(error.message)
-  }
-
-  async function supprimer() {
-    retirer()
-    fini()
-    const { error } = await table('courses').delete().eq('id', article.id)
-    if (error) erreur(error.message)
-  }
-
-  return (
-    <form onSubmit={enregistrer}>
-      <Champ etiquette="Article">
-        <input className="champ" value={nom} onChange={(e) => setNom(e.target.value)} required />
-      </Champ>
-      <Champ etiquette="Quantité">
-        <input
-          className="champ"
-          value={quantite}
-          onChange={(e) => setQuantite(e.target.value)}
-          placeholder="Ex. 2, 500 g, 1 paquet"
-        />
-      </Champ>
-      <Groupe etiquette="Rayon">
-        <div className="flex flex-wrap gap-2">
-          {RAYONS.map((r) => (
-            <button
-              key={r.cle}
-              type="button"
-              className="puce"
-              aria-pressed={rayonChoisi === r.cle}
-              onClick={() => setRayon(r.cle)}
-            >
-              <r.icone size={16} />
-              {r.nom}
-            </button>
+      <section aria-labelledby="titre-repas" className="mt-10">
+        <div className="flex items-end gap-3 px-5 pb-1">
+          <h2 id="titre-repas" className="flex-1 text-[1.35rem] font-bold tracking-tight">
+            Repas proposés
+          </h2>
+          <button
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            className="inline-flex items-center gap-1.5 pb-1 text-[0.9rem] font-semibold underline underline-offset-4"
+          >
+            <RefreshCw size={15} /> Autres idées
+          </button>
+        </div>
+        <p className="px-5 pb-3 text-[0.92rem] text-encre-2">Pas d'idée ? Ajoutez les ingrédients d'un repas en un geste.</p>
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
+          {idees.map((r) => (
+            <article key={r.nom} className="flex w-[17rem] shrink-0 snap-start flex-col rounded-[1.4rem] bg-surface p-4">
+              <div className="flex items-start gap-3">
+                <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-fond text-[2rem]" aria-hidden="true">
+                  {r.emoji}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-[1.1rem] leading-tight font-semibold">{r.nom}</h3>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2.5 text-[0.82rem] text-encre-2">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock size={13} /> {r.duree}
+                    </span>
+                    {r.vege && (
+                      <span className="inline-flex items-center gap-1">
+                        <Leaf size={13} /> Végétarien
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-3 flex flex-1 flex-wrap content-start gap-1.5">
+                {r.ingredients.map((i) => (
+                  <li
+                    key={i}
+                    className={`rounded-full px-2.5 py-1 text-[0.8rem] ${
+                      dejaSurLaListe.has(normaliser(i)) ? 'bg-encre text-fond' : 'bg-fond text-encre-2'
+                    }`}
+                  >
+                    {i}
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="bouton bouton-secondaire mt-4 w-full !py-2.5" onClick={() => void ajouterRepas(r)}>
+                <Plus size={17} /> Ajouter les ingrédients
+              </button>
+            </article>
           ))}
         </div>
-      </Groupe>
-      <div className="mt-2 flex gap-3">
-        <button type="button" className="bouton bouton-danger" onClick={() => void supprimer()}>
-          Supprimer
-        </button>
-        <button type="submit" className="bouton bouton-principal flex-1">
-          Enregistrer
-        </button>
-      </div>
-      <p className="mt-4 text-[0.85rem] text-encre-3">Le rayon choisi sera retenu pour les prochaines fois.</p>
-    </form>
+      </section>
+
+      <Sheet ouvert={confirmer} fermer={() => setConfirmer(false)} titre="Vider la liste ?">
+        <p className="text-encre-2">
+          Les {liste.length} article{liste.length > 1 ? 's' : ''} de la liste seront supprimés, chez vous et chez {autre.prenom}.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button type="button" className="bouton bouton-secondaire flex-1" onClick={() => setConfirmer(false)}>
+            Annuler
+          </button>
+          <button type="button" className="bouton flex-1 bg-retard text-white" onClick={() => void viderLaListe()}>
+            Vider la liste
+          </button>
+        </div>
+      </Sheet>
+    </>
   )
 }

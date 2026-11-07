@@ -2,7 +2,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
-import { BoutonAjouter, Champ, Chargement, Choix, Erreur, Groupe, Liste, Pastille, Section, TitrePage, Vide } from '../components/ui'
+import { OngletProjets } from '../components/Projets'
+import { BoutonAjouter, Champ, Choix, Erreur, Groupe, Liste, Pastille, Section, TitrePage, Vide } from '../components/ui'
 import { calculerSolde } from '../lib/budget'
 import { CATEGORIES_BUDGET, REMBOURSEMENT, categorieBudget, euros, lireMontant } from '../lib/categories'
 import { aujourdhui, debutMois, finMois, jourRelatif, majuscule, nomMois, nomMoisSeul } from '../lib/dates'
@@ -11,7 +12,31 @@ import { table } from '../lib/supabase'
 import type { Depense, Solde } from '../lib/types'
 import { useLive } from '../lib/useLive'
 
+type OngletBudget = 'depenses' | 'travaux' | 'envie'
+
 export function Budget() {
+  const [onglet, setOnglet] = useState<OngletBudget>('depenses')
+  return (
+    <>
+      <TitrePage>Budget</TitrePage>
+      <div className="px-5 pb-5">
+        <Choix
+          etiquette="Partie du budget"
+          valeur={onglet}
+          changer={setOnglet}
+          options={[
+            { valeur: 'depenses', libelle: 'Dépenses' },
+            { valeur: 'travaux', libelle: 'Travaux à venir' },
+            { valeur: 'envie', libelle: 'Envies' },
+          ]}
+        />
+      </div>
+      {onglet === 'depenses' ? <OngletDepenses /> : <OngletProjets key={onglet} genre={onglet} />}
+    </>
+  )
+}
+
+function OngletDepenses() {
   const { moi, autre, membre } = useFoyer()
   const maintenant = new Date()
   const [periode, setPeriode] = useState({ annee: maintenant.getFullYear(), mois: maintenant.getMonth() })
@@ -82,64 +107,54 @@ export function Budget() {
 
   return (
     <>
-      <TitrePage>Budget</TitrePage>
+      <div className="mx-3 rounded-[1.6rem] bg-encre p-5 text-fond">
+        <div className="-mx-2 -mt-2 flex items-center">
+          <button type="button" className="grid size-10 place-items-center rounded-full" onClick={() => changerMois(-1)} aria-label="Mois précédent">
+            <ChevronLeft size={21} />
+          </button>
+          <h2 className="flex-1 text-center font-semibold opacity-85">{majuscule(nomMois(periode.annee, periode.mois))}</h2>
+          <button
+            type="button"
+            className="grid size-10 place-items-center rounded-full disabled:opacity-25"
+            onClick={() => changerMois(1)}
+            disabled={estMoisCourant}
+            aria-label="Mois suivant"
+          >
+            <ChevronRight size={21} />
+          </button>
+        </div>
+        <p className="nombre mt-3 text-[3rem] leading-none font-bold tracking-tight" style={{ fontStretch: '85%' }}>
+          {lignes ? euros(stats.total) : '…'}
+        </p>
+        <p className="mt-2 opacity-75">dépensés en {nomMoisSeul(periode.annee, periode.mois)}</p>
+        {stats.total > 0 && <RepartitionPayeurs parPersonne={stats.parPersonne} total={stats.total} />}
 
-      {soldes && (
-        <div className="mx-3 mb-6 rounded-2xl bg-surface px-4 py-4">
-          {montantDu === 0 ? (
-            <p className="text-[1.15rem] font-semibold">Vous êtes à l'équilibre.</p>
-          ) : (
-            <>
-              <p className="flex items-center gap-2.5 text-[1.15rem] leading-snug font-semibold">
-                <Pastille cle={debiteur.cle} taille={24} decoratif />
-                <span>
+        {soldes && (
+          <div className="mt-5 flex items-center gap-3 rounded-2xl bg-fond/10 px-3.5 py-3">
+            {montantDu === 0 ? (
+              <p className="flex-1 font-semibold">Vous êtes à l'équilibre.</p>
+            ) : (
+              <>
+                <Pastille cle={debiteur.cle} taille={26} decoratif />
+                <p className="flex-1 leading-snug font-semibold">
                   {debiteur.cle === moi.cle ? 'Vous devez' : `${debiteur.prenom} vous doit`}{' '}
                   <span className="nombre">{euros(montantDu)}</span>
-                  {debiteur.cle === moi.cle && ` à ${creancier.prenom}`}.
-                </span>
-              </p>
-              <button
-                type="button"
-                className="mt-3 text-[0.95rem] font-semibold underline underline-offset-4"
-                onClick={() => setRemboursement(true)}
-              >
-                Enregistrer un remboursement
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center gap-1 px-3">
-        <button type="button" className="grid size-11 place-items-center rounded-full" onClick={() => changerMois(-1)} aria-label="Mois précédent">
-          <ChevronLeft size={22} />
-        </button>
-        <h2 className="flex-1 text-center text-[1.1rem] font-semibold">{majuscule(nomMois(periode.annee, periode.mois))}</h2>
-        <button
-          type="button"
-          className="grid size-11 place-items-center rounded-full disabled:opacity-30"
-          onClick={() => changerMois(1)}
-          disabled={estMoisCourant}
-          aria-label="Mois suivant"
-        >
-          <ChevronRight size={22} />
-        </button>
+                  {debiteur.cle === moi.cle && ` à ${creancier.prenom}`}
+                </p>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full bg-fond px-3.5 py-2 text-[0.88rem] font-bold text-encre"
+                  onClick={() => setRemboursement(true)}
+                >
+                  Rembourser
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {erreur && <Erreur message={erreur} />}
-      {!lignes && !erreur && <Chargement />}
-
-      {lignes && (
-        <div className="px-5 pt-3 pb-2">
-          <p className="nombre text-[3.2rem] leading-none font-bold tracking-tight" style={{ fontStretch: '85%' }}>
-            {euros(stats.total)}
-          </p>
-          <p className="mt-2 text-encre-2">
-            dépensés en {nomMoisSeul(periode.annee, periode.mois)}
-          </p>
-          {stats.total > 0 && <RepartitionPayeurs parPersonne={stats.parPersonne} total={stats.total} />}
-        </div>
-      )}
 
       {lignes && stats.total === 0 && (lignes ?? []).length === 0 && (
         <Vide titre={estMoisCourant ? 'Aucune dépense ce mois-ci.' : 'Aucune dépense ce mois-là.'}>
@@ -164,11 +179,13 @@ export function Budget() {
                   aria-pressed={filtre === c.cle}
                 >
                   <span className="flex items-center gap-2.5">
-                    <c.icone size={18} className="text-encre-2" />
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface">
+                      <c.icone size={16} />
+                    </span>
                     <span className="flex-1">{c.nom}</span>
                     <span className="nombre font-semibold">{euros(montant)}</span>
                   </span>
-                  <span className="mt-1.5 ml-7 block h-1.5 rounded-full bg-surface-2">
+                  <span className="mt-1.5 ml-[2.6rem] block h-1.5 rounded-full bg-surface-2">
                     <span
                       className="block h-full rounded-full bg-encre-2"
                       style={{ width: `${Math.max(2, (montant / maxCategorie) * 100)}%` }}
@@ -261,11 +278,12 @@ function RepartitionPayeurs({ parPersonne, total }: { parPersonne: Map<string, n
             />
           ))}
       </div>
-      <div className="mt-2.5 flex justify-between gap-4 text-[0.92rem]">
+      <div className="mt-2.5 flex justify-between gap-4 text-[0.9rem]">
         {parts.map((p) => (
-          <span key={p.membre.cle} className="flex items-center gap-1.5 text-encre-2">
+          <span key={p.membre.cle} className="flex items-center gap-1.5">
             <Pastille cle={p.membre.cle} taille={16} decoratif />
-            {p.membre.prenom} a payé <span className="nombre font-semibold text-encre">{euros(p.montant)}</span>
+            <span className="opacity-80">{p.membre.prenom}</span>
+            <span className="nombre font-semibold">{euros(p.montant)}</span>
           </span>
         ))}
       </div>

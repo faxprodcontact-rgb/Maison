@@ -1,14 +1,15 @@
-import { CalendarClock, Plus } from 'lucide-react'
+import { BellRing, CalendarCheck, CalendarClock, CheckCircle2, ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { type FormEvent, useMemo, useState } from 'react'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
-import { BoutonAjouter, Champ, Chargement, Erreur, Groupe, Liste, Section, TitrePage, Vide } from '../components/ui'
+import { BoutonAjouter, Champ, Chargement, Erreur, Groupe } from '../components/ui'
 import { CATEGORIES_ENTRETIEN, categorieEntretien, euros, lireMontant } from '../lib/categories'
 import { aujourdhui, delai, jourAvecAnnee, majuscule } from '../lib/dates'
-import { FREQUENCES, IDEES_ENTRETIEN, etatEntretien, suivante, texteFrequence } from '../lib/entretien'
+import { FREQUENCES, aPrevoirMaintenant, etatEntretien, nomDuMois, suivante, texteFrequence } from '../lib/entretien'
 import { useFoyer } from '../lib/foyer'
 import { table } from '../lib/supabase'
-import type { Entretien as TypeEntretien, EntretienFait } from '../lib/types'
+import type { EntretienFait, Entretien as TypeEntretien } from '../lib/types'
 import { useLive } from '../lib/useLive'
 
 type Panneau =
@@ -22,65 +23,80 @@ export function Entretien() {
   const { lignes, setLignes, erreur, recharger } = useLive<TypeEntretien>('entretien', () =>
     table('entretien').select('*').order('prochaine', { ascending: true, nullsFirst: false }).order('titre'),
   )
-
   const appliquer = (id: string, maj: Partial<TypeEntretien> | null) =>
     setLignes((l) => (maj ? l?.map((e) => (e.id === id ? { ...e, ...maj } : e)) : l?.filter((e) => e.id !== id)) ?? l)
 
   const groupes = useMemo(() => {
     const liste = lignes ?? []
-    return [
-      { titre: 'En retard', ton: 'retard' as const, items: liste.filter((e) => etatEntretien(e) === 'retard') },
-      { titre: 'Dans les 30 jours', ton: 'bientot' as const, items: liste.filter((e) => etatEntretien(e) === 'bientot') },
-      { titre: 'Plus tard', ton: undefined, items: liste.filter((e) => etatEntretien(e) === 'plus-tard') },
-      { titre: 'Sans échéance', ton: undefined, items: liste.filter((e) => etatEntretien(e) === 'sans-date') },
-    ].filter((g) => g.items.length > 0)
+    return {
+      maintenant: liste.filter(aPrevoirMaintenant),
+      planifies: liste.filter((e) => e.prochaine && !aPrevoirMaintenant(e)),
+      aPlanifier: liste.filter((e) => !e.prochaine),
+    }
   }, [lignes])
 
-  const existants = new Set((lignes ?? []).map((e) => e.titre.toLowerCase()))
-  const idees = IDEES_ENTRETIEN.filter((i) => !existants.has(i.titre.toLowerCase()))
   const fermer = () => setPanneau(null)
+  const ouvrir = (item: TypeEntretien) => setPanneau({ mode: 'detail', item })
 
   return (
     <>
-      <TitrePage>Entretien</TitrePage>
+      <header className="px-5 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-5">
+        <h1 className="titre-page">Entretien</h1>
+        <p className="mt-2 text-encre-2">Ce qu'il faut faire régulièrement dans la maison. L'app vous prévient quand ça approche.</p>
+      </header>
 
       {erreur && <Erreur message={erreur} />}
       {!lignes && !erreur && <Chargement />}
 
-      {lignes && lignes.length === 0 && (
-        <Vide titre="Rien à suivre pour l'instant.">
-          Notez ici ce qui revient : chaudière, ramonage, contrôle technique, assurances, garanties… L'app vous
-          prévient quand l'échéance approche.
-        </Vide>
+      {groupes.maintenant.length > 0 && (
+        <section className="px-3">
+          <h2 className="flex items-center gap-2 px-2 pb-3 text-[1.2rem] font-bold">
+            <BellRing size={19} className="text-retard" /> À prévoir maintenant
+          </h2>
+          <div className="grid gap-3">
+            {groupes.maintenant.map((e) => {
+              const c = categorieEntretien(e.categorie)
+              const enRetard = etatEntretien(e) === 'retard'
+              return (
+                <article key={e.id} className="rounded-[1.4rem] bg-surface p-4">
+                  <button type="button" onClick={() => ouvrir(e)} className="flex w-full items-start gap-3 text-left">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2">
+                      <c.icone size={21} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[1.1rem] leading-snug font-semibold">{e.titre}</span>
+                      <span className={`mt-0.5 block text-[0.88rem] font-semibold ${enRetard ? 'text-retard' : 'text-encre-2'}`}>
+                        {enRetard ? `En retard, prévu ${delai(e.prochaine ?? '')}` : majuscule(delai(e.prochaine ?? ''))}
+                      </span>
+                    </span>
+                  </button>
+                  {e.rappel && <p className="mt-3 rounded-2xl bg-fond px-3.5 py-3 text-[0.95rem] leading-snug">{e.rappel}</p>}
+                  <button
+                    type="button"
+                    className="bouton bouton-principal mt-3 w-full !py-2.5"
+                    onClick={() => setPanneau({ mode: 'fait', item: e })}
+                  >
+                    <CheckCircle2 size={18} /> C'est fait
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        </section>
       )}
 
-      {groupes.map((g) => (
-        <Section key={g.titre} titre={g.titre} ton={g.ton} apres={<span className="nombre text-encre-3">{g.items.length}</span>}>
-          <Liste>
-            {g.items.map((e) => (
-              <LigneEntretien key={e.id} item={e} ouvrir={() => setPanneau({ mode: 'detail', item: e })} />
-            ))}
-          </Liste>
-        </Section>
-      ))}
+      {groupes.planifies.length > 0 && (
+        <ListeEntretien titre="Planifié" icone={<CalendarCheck size={18} />} items={groupes.planifies} ouvrir={ouvrir} />
+      )}
 
-      {lignes && idees.length > 0 && (
-        <div className="mt-8 px-5">
-          <p className="mb-2 font-semibold text-encre-2">{lignes.length === 0 ? 'Pour commencer' : 'Idées à ajouter'}</p>
-          <div className="flex flex-wrap gap-2">
-            {idees.slice(0, lignes.length === 0 ? 11 : 5).map((idee) => (
-              <button
-                key={idee.titre}
-                type="button"
-                className="puce"
-                onClick={() => setPanneau({ mode: 'formulaire', item: { ...idee } })}
-              >
-                <Plus size={15} className="text-encre-3" />
-                {idee.titre}
-              </button>
-            ))}
-          </div>
-        </div>
+      {groupes.aPlanifier.length > 0 && (
+        <ListeEntretien
+          titre="À démarrer"
+          aide="Indiquez la dernière fois que c'est fait : l'app calculera la suivante."
+          icone={<CalendarClock size={18} />}
+          items={groupes.aPlanifier}
+          ouvrir={ouvrir}
+        />
       )}
 
       <BoutonAjouter libelle="Ajouter un entretien" onClick={() => setPanneau({ mode: 'formulaire', item: {} })} />
@@ -110,7 +126,7 @@ export function Entretien() {
         )}
         {panneau?.mode === 'formulaire' && (
           <FormulaireEntretien
-            key={panneau.item.id ?? panneau.item.titre ?? 'nouveau'}
+            key={panneau.item.id ?? 'nouveau'}
             item={panneau.item}
             fini={fermer}
             appliquer={appliquer}
@@ -122,37 +138,50 @@ export function Entretien() {
   )
 }
 
-export function TexteEcheance({ item }: { item: Pick<TypeEntretien, 'prochaine'> }) {
-  const etat = etatEntretien(item)
-  if (!item.prochaine) return <span className="text-encre-3">Pas d'échéance</span>
-  if (etat === 'retard') return <span className="font-semibold text-retard">En retard, prévu {delai(item.prochaine)}</span>
-  if (etat === 'bientot')
-    return (
-      <span className="inline-flex items-center gap-1 font-semibold text-bientot">
-        <CalendarClock size={14} />
-        {majuscule(delai(item.prochaine))}
-      </span>
-    )
-  return <span>Le {jourAvecAnnee(item.prochaine)}</span>
-}
-
-function LigneEntretien({ item, ouvrir }: { item: TypeEntretien; ouvrir: () => void }) {
-  const c = categorieEntretien(item.categorie)
+function ListeEntretien({
+  titre,
+  aide,
+  icone,
+  items,
+  ouvrir,
+}: {
+  titre: string
+  aide?: string
+  icone: ReactNode
+  items: TypeEntretien[]
+  ouvrir: (e: TypeEntretien) => void
+}) {
   return (
-    <li>
-      <button type="button" className="flex w-full items-center gap-3.5 px-4 py-3 text-left" onClick={ouvrir}>
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2">
-          <c.icone size={19} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[1.05rem] leading-snug">{item.titre}</span>
-          <span className="mt-0.5 flex flex-wrap gap-x-2 text-[0.85rem] text-encre-2">
-            <TexteEcheance item={item} />
-            {item.frequence_mois && <span className="text-encre-3">{texteFrequence(item.frequence_mois)}</span>}
-          </span>
-        </span>
-      </button>
-    </li>
+    <section className="mt-8 px-3">
+      <h2 className="flex items-center gap-2 px-2 text-[1.2rem] font-bold">
+        {icone} {titre}
+      </h2>
+      {aide && <p className="px-2 pt-1 text-[0.9rem] text-encre-2">{aide}</p>}
+      <ul className="liste mt-3 overflow-hidden rounded-[1.4rem] bg-surface">
+        {items.map((e) => {
+          const c = categorieEntretien(e.categorie)
+          const mois = nomDuMois(e.mois_conseille)
+          return (
+            <li key={e.id}>
+              <button type="button" onClick={() => ouvrir(e)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2">
+                  <c.icone size={19} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block leading-snug">{e.titre}</span>
+                  <span className="mt-0.5 block text-[0.84rem] text-encre-2">
+                    {e.prochaine
+                      ? `${majuscule(jourAvecAnnee(e.prochaine))}, ${texteFrequence(e.frequence_mois)}`
+                      : `${majuscule(texteFrequence(e.frequence_mois))}${mois ? `, idéalement en ${mois}` : ''}`}
+                  </span>
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-encre-3" />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -160,28 +189,31 @@ function Detail({ item, marquerFait, modifier }: { item: TypeEntretien; marquerF
   const { membre } = useFoyer()
   const { lignes: historique } = useLive<EntretienFait>(
     'entretien_historique',
-    () =>
-      table('entretien_historique')
-        .select('*')
-        .eq('entretien_id', item.id)
-        .order('fait_le', { ascending: false })
-        .limit(20),
+    () => table('entretien_historique').select('*').eq('entretien_id', item.id).order('fait_le', { ascending: false }).limit(20),
     [item.id],
   )
   const c = categorieEntretien(item.categorie)
+  const mois = nomDuMois(item.mois_conseille)
 
   return (
     <div>
+      {item.rappel && (
+        <div className="mb-5 rounded-2xl bg-fond px-4 py-3">
+          <p className="text-[0.85rem] font-semibold text-encre-2">Quand ça approche</p>
+          <p className="mt-1 leading-snug">{item.rappel}</p>
+        </div>
+      )}
       <dl className="mb-5 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2.5">
-        <dt className="text-encre-2">Échéance</dt>
-        <dd>
-          <TexteEcheance item={item} />
-          {item.prochaine && etatEntretien(item) !== 'plus-tard' && (
-            <span className="block text-[0.9rem] text-encre-3">{jourAvecAnnee(item.prochaine)}</span>
-          )}
-        </dd>
+        <dt className="text-encre-2">Prochaine fois</dt>
+        <dd className="font-semibold">{item.prochaine ? `${majuscule(jourAvecAnnee(item.prochaine))} (${delai(item.prochaine)})` : 'Pas encore planifiée'}</dd>
         <dt className="text-encre-2">Fréquence</dt>
         <dd>{majuscule(texteFrequence(item.frequence_mois))}</dd>
+        {mois && (
+          <>
+            <dt className="text-encre-2">Idéalement</dt>
+            <dd>En {mois}</dd>
+          </>
+        )}
         <dt className="text-encre-2">Dernière fois</dt>
         <dd>{item.derniere ? jourAvecAnnee(item.derniere) : 'Pas encore noté'}</dd>
         <dt className="text-encre-2">Catégorie</dt>
@@ -196,7 +228,7 @@ function Detail({ item, marquerFait, modifier }: { item: TypeEntretien; marquerF
           Modifier
         </button>
         <button type="button" className="bouton bouton-principal flex-1" onClick={marquerFait}>
-          C'est fait
+          <CheckCircle2 size={18} /> C'est fait
         </button>
       </div>
 
@@ -273,14 +305,16 @@ function FormulaireFait({
       </Champ>
       <Champ etiquette="Notes (facultatif)">
         <textarea
-          className="champ min-h-20"
-          placeholder="Ex. Technicien M. Martin, pièce changée"
+          className="champ min-h-16"
+          placeholder="Ex. M. Martin, chauffagiste, 06…"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
       </Champ>
-      <p className="mb-4 text-[0.9rem] text-encre-2">
-        {prochaine ? `Prochaine échéance : ${jourAvecAnnee(prochaine)}.` : "Pas de prochaine échéance : c'était une seule fois."}
+      <p className="mb-4 rounded-2xl bg-fond px-4 py-3 text-[0.95rem]">
+        {prochaine
+          ? `Prochaine fois : ${jourAvecAnnee(prochaine)}. L'app vous le rappellera ${item.prevenir_jours >= 28 ? 'un mois' : `${item.prevenir_jours} jours`} avant.`
+          : "Pas de prochaine fois : c'était à faire une seule fois."}
       </p>
       <button type="submit" className="bouton bouton-principal w-full">
         Enregistrer
@@ -288,6 +322,15 @@ function FormulaireFait({
     </form>
   )
 }
+
+const DELAIS = [
+  { jours: 7, libelle: '1 semaine' },
+  { jours: 14, libelle: '2 semaines' },
+  { jours: 30, libelle: '1 mois' },
+  { jours: 60, libelle: '2 mois' },
+]
+
+const MOIS = ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
 
 function FormulaireEntretien({
   item,
@@ -305,11 +348,12 @@ function FormulaireEntretien({
   const [titre, setTitre] = useState(item.titre ?? '')
   const [categorie, setCategorie] = useState(item.categorie ?? 'maison')
   const [frequence, setFrequence] = useState<number | null>(item.id ? (item.frequence_mois ?? null) : (item.frequence_mois ?? 12))
-  const [autreFrequence, setAutreFrequence] = useState(
-    frequence && !FREQUENCES.some((f) => f.mois === frequence) ? String(frequence) : '',
-  )
+  const [autreFrequence, setAutreFrequence] = useState(frequence && !FREQUENCES.some((f) => f.mois === frequence) ? String(frequence) : '')
   const [derniere, setDerniere] = useState(item.derniere ?? '')
   const [prochaine, setProchaine] = useState(item.prochaine ?? '')
+  const [rappel, setRappel] = useState(item.rappel ?? '')
+  const [prevenir, setPrevenir] = useState(item.prevenir_jours ?? 30)
+  const [mois, setMois] = useState<number | null>(item.mois_conseille ?? null)
   const [notes, setNotes] = useState(item.notes ?? '')
 
   const frequenceFinale = autreFrequence ? Math.min(240, Math.max(1, Number.parseInt(autreFrequence, 10) || 1)) : frequence
@@ -324,13 +368,16 @@ function FormulaireEntretien({
       frequence_mois: frequenceFinale,
       derniere: derniere || null,
       prochaine: prochaine || prochaineCalculee || null,
+      rappel: rappel.trim() || null,
+      prevenir_jours: prevenir,
+      mois_conseille: mois,
       notes: notes.trim() || null,
     }
     fini()
     if (existant && item.id) {
       appliquer(item.id, donnees)
       const { error } = await table('entretien').update(donnees).eq('id', item.id)
-      if (error) toast(`Modification non enregistrée : ${error.message}`)
+      if (error) toast(`Non enregistré : ${error.message}`)
     } else {
       const { error } = await table('entretien').insert(donnees)
       if (error) toast(`Non enregistré : ${error.message}`)
@@ -345,7 +392,7 @@ function FormulaireEntretien({
     appliquer(item.id, null)
     const { error } = await table('entretien').delete().eq('id', item.id)
     if (error) toast(`Suppression impossible : ${error.message}`)
-    else toast('Supprimé.')
+    else toast('Supprimé de la liste.')
     recharger()
   }
 
@@ -358,7 +405,7 @@ function FormulaireEntretien({
           onChange={(e) => setTitre(e.target.value)}
           placeholder="Ex. Entretien de la chaudière"
           required
-          autoFocus={!existant && !item.titre}
+          autoFocus={!existant}
         />
       </Champ>
 
@@ -406,12 +453,47 @@ function FormulaireEntretien({
         </label>
       </Groupe>
 
+      <Champ etiquette="Ce qu'il faudra faire quand ça approche">
+        <textarea
+          className="champ min-h-16"
+          value={rappel}
+          onChange={(e) => setRappel(e.target.value)}
+          placeholder="Ex. Appeler le chauffagiste pour prendre rendez-vous"
+        />
+      </Champ>
+
+      <Groupe etiquette="Me prévenir">
+        <div className="flex flex-wrap gap-2">
+          {DELAIS.map((d) => (
+            <button key={d.jours} type="button" className="puce" aria-pressed={prevenir === d.jours} onClick={() => setPrevenir(d.jours)}>
+              {d.libelle} avant
+            </button>
+          ))}
+        </div>
+      </Groupe>
+
+      <Groupe etiquette="Mois idéal (facultatif)">
+        <div className="flex flex-wrap gap-1.5">
+          {MOIS.map((m, i) => (
+            <button
+              key={m}
+              type="button"
+              className="puce !px-2.5 !py-1.5 !text-[0.85rem]"
+              aria-pressed={mois === i + 1}
+              onClick={() => setMois(mois === i + 1 ? null : i + 1)}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </Groupe>
+
       <Champ etiquette="Dernière fois (facultatif)">
         <input type="date" className="champ" value={derniere} max={aujourdhui()} onChange={(e) => setDerniere(e.target.value)} />
       </Champ>
 
       <Champ
-        etiquette="Prochaine échéance"
+        etiquette="Prochaine fois"
         aide={prochaineCalculee ? `Calculée d'après la dernière fois : ${jourAvecAnnee(prochaineCalculee)}.` : undefined}
       >
         <input type="date" className="champ" value={prochaine} onChange={(e) => setProchaine(e.target.value)} />
@@ -419,8 +501,8 @@ function FormulaireEntretien({
 
       <Champ etiquette="Notes">
         <textarea
-          className="champ min-h-20"
-          placeholder="Ex. contact du chauffagiste, numéro de contrat, date de fin de garantie"
+          className="champ min-h-16"
+          placeholder="Ex. contact du chauffagiste, numéro de contrat"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

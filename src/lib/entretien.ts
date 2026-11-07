@@ -33,20 +33,6 @@ export const FREQUENCES: { mois: number | null; libelle: string }[] = [
   { mois: null, libelle: 'Une seule fois' },
 ]
 
-export const IDEES_ENTRETIEN: { titre: string; categorie: string; frequence_mois: number | null }[] = [
-  { titre: 'Entretien de la chaudière', categorie: 'chauffage', frequence_mois: 12 },
-  { titre: 'Ramonage', categorie: 'chauffage', frequence_mois: 12 },
-  { titre: 'Détartrer le chauffe-eau', categorie: 'chauffage', frequence_mois: 24 },
-  { titre: 'Tester les détecteurs de fumée', categorie: 'securite', frequence_mois: 6 },
-  { titre: 'Nettoyer le filtre de la hotte', categorie: 'electromenager', frequence_mois: 3 },
-  { titre: 'Nettoyer le filtre du lave-vaisselle', categorie: 'electromenager', frequence_mois: 1 },
-  { titre: 'Détartrer la machine à laver', categorie: 'electromenager', frequence_mois: 3 },
-  { titre: 'Contrôle technique', categorie: 'voiture', frequence_mois: 24 },
-  { titre: 'Révision de la voiture', categorie: 'voiture', frequence_mois: 12 },
-  { titre: "Renouvellement de l'assurance habitation", categorie: 'contrats', frequence_mois: 12 },
-  { titre: 'Tailler la haie', categorie: 'jardin', frequence_mois: 6 },
-]
-
 /** L'échéance approche (ou est passée) : c'est le moment d'agir */
 export function aPrevoirMaintenant(e: Pick<Entretien, 'prochaine' | 'prevenir_jours'>): boolean {
   if (!e.prochaine) return false
