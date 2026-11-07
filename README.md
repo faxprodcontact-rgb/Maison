@@ -15,7 +15,7 @@ L'application de la maison de Simon et Romane : courses, tâches, budget et entr
 - React + TypeScript, construit avec Vite, installable sur téléphone (PWA).
 - Données dans Supabase, projet « Application Personnel », partagé avec d'autres apps : toutes les tables sont préfixées `maison_`.
 - Seuls les comptes reliés dans `maison_membres` peuvent lire ou modifier les données.
-- Hébergement : Vercel, mise en ligne automatique à chaque modification du dépôt.
+- Hébergement : GitHub Pages (voir « Mise en ligne »).
 
 ## Comptes
 
