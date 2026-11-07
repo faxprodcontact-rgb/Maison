@@ -32,7 +32,7 @@ export function Connexion() {
         <label className="mb-4 block">
           <span className="mb-2 block text-[0.9rem] font-semibold text-encre-2">Email</span>
           <input
-            className="champ"
+            className="champ !bg-surface"
             type="email"
             autoComplete="email"
             inputMode="email"
@@ -44,7 +44,7 @@ export function Connexion() {
         <label className="mb-6 block">
           <span className="mb-2 block text-[0.9rem] font-semibold text-encre-2">Mot de passe</span>
           <input
-            className="champ"
+            className="champ !bg-surface"
             type="password"
             autoComplete="current-password"
             required
