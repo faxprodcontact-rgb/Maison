@@ -27,14 +27,10 @@ Un lien d'invitation pré-remplit le code : `…/maison/?code=XXXX-XXXX`.
 
 ## Mise en ligne
 
-L'app est publiée sur GitHub Pages, dans un sous-dossier `maison` d'un dépôt public :
+L'app est publiée sur GitHub Pages : https://faxprodcontact-rgb.github.io/Maison/
 
-```bash
-scripts/publier.sh ../fuze-arena-test
-```
-
-puis commit et push dans ce dépôt. Les données ne passent jamais par GitHub : elles restent dans Supabase,
-protégées par les règles d'accès de la base.
+Chaque modification poussée sur `main` est mise en ligne automatiquement (`.github/workflows/mise-en-ligne.yml`).
+Les données ne passent jamais par GitHub : elles restent dans Supabase, protégées par les règles d'accès de la base.
 
 ## Base de données
 
