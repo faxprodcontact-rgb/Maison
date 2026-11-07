@@ -39,7 +39,8 @@ export function Rejoindre({ email, rejoint }: { email: string; rejoint: () => vo
       {places === null ? (
         <form onSubmit={verifierCode} className="mt-6">
           <p className="mb-6 text-encre-2">
-            Votre compte est créé. Entrez le code du foyer pour accéder à la maison.
+            Vous êtes connecté avec <strong className="text-encre">{email}</strong>. Entrez le code du foyer pour relier ce
+            compte à la maison.
           </p>
           <label className="mb-6 block">
             <span className="mb-2 block text-[0.9rem] font-semibold text-encre-2">Code du foyer</span>
