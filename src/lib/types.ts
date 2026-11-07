@@ -3,6 +3,9 @@ export type Membre = {
   prenom: string
   couleur: string
   user_id: string | null
+  notif_mots?: boolean
+  notif_agenda?: boolean
+  notif_matin?: boolean
 }
 
 export type Article = {
@@ -94,6 +97,8 @@ export type Message = {
   importance: Importance
   cree_le: string
   lu_le: string | null
+  reaction: string | null
+  photo: string | null
 }
 
 export type TypeEvenement = 'sortie' | 'rdv' | 'sante' | 'famille' | 'anniversaire' | 'autre'
@@ -129,5 +134,33 @@ export type Projet = {
   fait: boolean
   fait_le: string | null
   cree_par: string | null
+  cree_le: string
+}
+
+export type Menu = {
+  id: string
+  le: string
+  moment: 'midi' | 'soir'
+  titre: string
+  emoji: string | null
+  ajoute_par: string | null
+  cree_le: string
+}
+
+export type CategorieDocument = 'facture' | 'garantie' | 'attestation' | 'contrat' | 'devis' | 'notice' | 'autre'
+
+export type Document = {
+  id: string
+  titre: string
+  categorie: CategorieDocument
+  chemin: string
+  type_mime: string | null
+  taille: number | null
+  lie_a: 'entretien' | 'projet' | null
+  lie_id: string | null
+  date_doc: string | null
+  expire_le: string | null
+  notes: string | null
+  ajoute_par: string | null
   cree_le: string
 }

@@ -1,9 +1,10 @@
 import { BellRing, CalendarCheck, CalendarClock, CheckCircle2, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { type FormEvent, useMemo, useState } from 'react'
+import { OngletPapiers, PapiersLies } from '../components/Papiers'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
-import { BoutonAjouter, Champ, Chargement, Erreur, Groupe } from '../components/ui'
+import { BoutonAjouter, Champ, Chargement, Choix, Erreur, Groupe } from '../components/ui'
 import { CATEGORIES_ENTRETIEN, categorieEntretien, euros, lireMontant } from '../lib/categories'
 import { aujourdhui, delai, jourAvecAnnee, majuscule } from '../lib/dates'
 import { FREQUENCES, aPrevoirMaintenant, etatEntretien, nomDuMois, suivante, texteFrequence } from '../lib/entretien'
@@ -19,6 +20,34 @@ type Panneau =
   | null
 
 export function Entretien() {
+  const [onglet, setOnglet] = useState<'entretiens' | 'papiers'>('entretiens')
+  return (
+    <>
+      <header className="px-5 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-4">
+        <h1 className="titre-page">Entretien</h1>
+        <p className="mt-2 text-encre-2">
+          {onglet === 'entretiens'
+            ? "Ce qu'il faut faire régulièrement dans la maison. L'app vous prévient quand ça approche."
+            : 'Factures, garanties, attestations, contrats : tous les papiers de la maison, toujours sur vous.'}
+        </p>
+      </header>
+      <div className="px-5 pb-5">
+        <Choix
+          etiquette="Partie"
+          valeur={onglet}
+          changer={setOnglet}
+          options={[
+            { valeur: 'entretiens', libelle: 'Entretiens' },
+            { valeur: 'papiers', libelle: 'Papiers' },
+          ]}
+        />
+      </div>
+      {onglet === 'entretiens' ? <OngletEntretiens /> : <OngletPapiers />}
+    </>
+  )
+}
+
+function OngletEntretiens() {
   const [panneau, setPanneau] = useState<Panneau>(null)
   const { lignes, setLignes, erreur, recharger } = useLive<TypeEntretien>('entretien', () =>
     table('entretien').select('*').order('prochaine', { ascending: true, nullsFirst: false }).order('titre'),
@@ -40,11 +69,6 @@ export function Entretien() {
 
   return (
     <>
-      <header className="px-5 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-5">
-        <h1 className="titre-page">Entretien</h1>
-        <p className="mt-2 text-encre-2">Ce qu'il faut faire régulièrement dans la maison. L'app vous prévient quand ça approche.</p>
-      </header>
-
       {erreur && <Erreur message={erreur} />}
       {!lignes && !erreur && <Chargement />}
 
@@ -231,6 +255,8 @@ function Detail({ item, marquerFait, modifier }: { item: TypeEntretien; marquerF
           <CheckCircle2 size={18} /> C'est fait
         </button>
       </div>
+
+      <PapiersLies lien={{ lie_a: 'entretien', lie_id: item.id, nom: item.titre }} />
 
       {historique && historique.length > 0 && (
         <div className="mt-7">

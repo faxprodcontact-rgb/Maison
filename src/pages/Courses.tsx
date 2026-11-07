@@ -1,5 +1,6 @@
-import { Check, Clock, Leaf, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { CalendarPlus, Check, Clock, Leaf, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
+import { FicheMenu, MenuSemaine, type OuvrirMenu } from '../components/Menu'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import { Chargement, Erreur, Pastille, TitrePage } from '../components/ui'
@@ -17,6 +18,7 @@ export function Courses() {
   const [saisie, setSaisie] = useState('')
   const [confirmer, setConfirmer] = useState(false)
   const [page, setPage] = useState(0)
+  const [menuChoix, setMenuChoix] = useState<Parameters<OuvrirMenu>[0] | null>(null)
 
   const { lignes: articles, setLignes, erreur, recharger } = useLive<Article>('courses', () =>
     table('courses').select('*').order('cree_le'),
@@ -236,6 +238,8 @@ export function Courses() {
         </div>
       )}
 
+      <MenuSemaine ouvrir={setMenuChoix} />
+
       <section aria-labelledby="titre-repas" className="mt-10">
         <div className="flex items-end gap-3 px-5 pb-1">
           <h2 id="titre-repas" className="flex-1 text-[1.35rem] font-bold tracking-tight">
@@ -283,13 +287,24 @@ export function Courses() {
                   </li>
                 ))}
               </ul>
-              <button type="button" className="bouton bouton-secondaire mt-4 w-full !py-2.5" onClick={() => void ajouterRepas(r)}>
-                <Plus size={17} /> Ajouter les ingrédients
-              </button>
+              <div className="mt-4 flex gap-2">
+                <button type="button" className="bouton bouton-secondaire flex-1 !px-3 !py-2.5 !text-[0.92rem]" onClick={() => void ajouterRepas(r)}>
+                  <Plus size={16} /> Ingrédients
+                </button>
+                <button
+                  type="button"
+                  className="bouton bouton-principal flex-1 !px-3 !py-2.5 !text-[0.92rem]"
+                  onClick={() => setMenuChoix({ repas: r })}
+                >
+                  <CalendarPlus size={16} /> Au menu
+                </button>
+              </div>
             </article>
           ))}
         </div>
       </section>
+
+      <FicheMenu choix={menuChoix} fermer={() => setMenuChoix(null)} ajouterIngredients={(r) => void ajouterRepas(r)} />
 
       <Sheet ouvert={confirmer} fermer={() => setConfirmer(false)} titre="Vider la liste ?">
         <p className="text-encre-2">

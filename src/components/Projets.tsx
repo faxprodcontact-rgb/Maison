@@ -6,6 +6,7 @@ import { useFoyer } from '../lib/foyer'
 import { table } from '../lib/supabase'
 import type { Projet } from '../lib/types'
 import { useLive } from '../lib/useLive'
+import { PapiersLies } from './Papiers'
 import { Sheet } from './Sheet'
 import { useToast } from './Toast'
 import { BoutonAjouter, Champ, Chargement, Choix, Erreur, Groupe } from './ui'
@@ -242,6 +243,7 @@ function FormulaireProjet({
   }
 
   return (
+    <>
     <form onSubmit={(e) => void enregistrer(e)}>
       <Champ etiquette={t.titre}>
         <input className="champ" value={titre} onChange={(e) => setTitre(e.target.value)} placeholder={t.exemple} required autoFocus={!existant} />
@@ -293,5 +295,9 @@ function FormulaireProjet({
         </button>
       </div>
     </form>
+    {existant && projet.id && projet.genre === 'travaux' && (
+      <PapiersLies lien={{ lie_a: 'projet', lie_id: projet.id, nom: projet.titre ?? '' }} />
+    )}
+    </>
   )
 }
