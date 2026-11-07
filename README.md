@@ -32,6 +32,14 @@ L'app est publiée sur GitHub Pages : https://faxprodcontact-rgb.github.io/Maiso
 Chaque modification poussée sur `main` est mise en ligne automatiquement (`.github/workflows/mise-en-ligne.yml`).
 Les données ne passent jamais par GitHub : elles restent dans Supabase, protégées par les règles d'accès de la base.
 
+## Notifications
+
+Les notifications (petits mots, réactions, questions et réponses de l'agenda, résumé du matin à 8 h)
+passent par la fonction Supabase `supabase/functions/mervans-notifications`, appelée par la base
+(`supabase/migrations/0005_notifications.sql`, extensions `pg_net` et `pg_cron`).
+Les clés de signature (VAPID) et le secret partagé sont dans le coffre-fort Supabase (Vault) :
+ils ne sont ni dans ce dépôt, ni dans l'app. Chacun active les notifications dans Réglages.
+
 ## Base de données
 
 Les scripts SQL sont dans `supabase/migrations/`, à exécuter dans l'ordre sur le projet Supabase.

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CarteEvenement, QuestionsEnAttente } from '../components/Agenda'
 import { MaisonDessin, couleurTexteSurCiel, momentDeLaJournee } from '../components/MaisonDessin'
 import { Messages } from '../components/Messages'
+import { BandeauNotifications } from '../components/Notifications'
 import { Pastille } from '../components/ui'
 import { aRappeler } from '../lib/agenda'
 import { categorieEntretien } from '../lib/categories'
@@ -55,6 +56,8 @@ export function Accueil() {
           </Link>
         </div>
       </header>
+
+      <BandeauNotifications />
 
       <div className="mt-6">
         <Messages />

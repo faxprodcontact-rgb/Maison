@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ReglagesNotifications } from '../components/Notifications'
 import { Pastille } from '../components/ui'
 import { useFoyer } from '../lib/foyer'
 import { supabase } from '../lib/supabase'
@@ -25,6 +26,8 @@ export function Reglages() {
           <p className="truncate text-encre-2">{email}</p>
         </div>
       </div>
+
+      <ReglagesNotifications />
 
       <section className="mx-3 mt-6 rounded-2xl bg-surface px-4 py-4">
         <h2 className="text-[1.15rem] font-semibold">Installer l'app sur votre téléphone</h2>

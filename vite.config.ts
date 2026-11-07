@@ -34,6 +34,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Affichage des notifications et ouverture de l'app quand on les touche
+        importScripts: ['sw-push.js'],
       },
     }),
   ],
