@@ -12,6 +12,16 @@
   --bientot: #17221e;
   --ok: #2f7a4f;
   --hauteur-nav: 4.25rem;
+  --evt-rdv: #1baf7a;
+  --evt-sortie: #6250d6;
+  --evt-famille: #e87ba4;
+  --evt-sante: #008300;
+  --evt-anniv: #eda100;
+  --evt-autre: #85948d;
+  --mot-doux: #fde8ef;
+  --mot-doux-encre: #c2366f;
+  --mot-important: #fdecea;
+  --mot-normal: #ffffff;
   color-scheme: light;
 }
 
@@ -27,6 +37,16 @@
     --retard: #ef7d6f;
     --bientot: #e7ece9;
     --ok: #6fc191;
+    --evt-rdv: #199e70;
+    --evt-sortie: #9085e9;
+    --evt-famille: #d55181;
+    --evt-sante: #008300;
+    --evt-anniv: #c98500;
+    --evt-autre: #74837c;
+    --mot-doux: #3a2430;
+    --mot-doux-encre: #f08bb2;
+    --mot-important: #3a2321;
+    --mot-normal: #1b221f;
     color-scheme: dark;
   }
 }
@@ -43,6 +63,7 @@
   --color-bientot: var(--bientot);
   --color-ok: var(--ok);
   --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-main: 'Caveat', 'Bricolage Grotesque Variable', cursive;
 }
 
 @layer base {
@@ -181,7 +202,44 @@
   }
 }
 
+@layer components {
+  .mot {
+    background: var(--mot-normal);
+    box-shadow: 0 8px 22px -18px rgb(0 0 0 / 0.55);
+  }
+  .mot[data-niveau='doux'] {
+    background: var(--mot-doux);
+  }
+  .mot[data-niveau='doux'] .mot-etiquette {
+    color: var(--mot-doux-encre);
+  }
+  .mot[data-niveau='important'] {
+    background: var(--mot-important);
+    box-shadow:
+      inset 4px 0 0 var(--retard),
+      0 8px 22px -18px rgb(0 0 0 / 0.55);
+  }
+  .mot[data-niveau='important'] .mot-etiquette {
+    color: var(--retard);
+  }
+  .niveau-actif[data-niveau='doux'] {
+    background: var(--mot-doux);
+    color: var(--mot-doux-encre);
+  }
+  .niveau-actif[data-niveau='normal'] {
+    background: var(--surface-2);
+    color: var(--encre);
+  }
+  .niveau-actif[data-niveau='important'] {
+    background: var(--mot-important);
+    color: var(--retard);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  .mot {
+    animation: monter 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
   .panneau {
     animation: monter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }

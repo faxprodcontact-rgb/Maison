@@ -37,7 +37,11 @@ export type Tache = {
   fait_par: string | null
   notes: string | null
   cree_le: string
+  piece: string | null
+  genre: GenreTache
 }
+
+export type GenreTache = 'faire' | 'reparer' | 'acheter' | 'idee'
 
 export type Depense = {
   id: string
@@ -66,6 +70,9 @@ export type Entretien = {
   derniere: string | null
   notes: string | null
   cree_le: string
+  rappel: string | null
+  mois_conseille: number | null
+  prevenir_jours: number
 }
 
 export type EntretienFait = {
@@ -75,5 +82,52 @@ export type EntretienFait = {
   cout: number | null
   notes: string | null
   fait_par: string | null
+  cree_le: string
+}
+
+export type Importance = 'doux' | 'normal' | 'important'
+
+export type Message = {
+  id: string
+  de: string
+  texte: string
+  importance: Importance
+  cree_le: string
+  lu_le: string | null
+}
+
+export type TypeEvenement = 'sortie' | 'rdv' | 'sante' | 'famille' | 'anniversaire' | 'autre'
+export type ImportanceEvenement = 'info' | 'normal' | 'important'
+
+export type Evenement = {
+  id: string
+  titre: string
+  le: string
+  heure: string | null
+  heure_fin: string | null
+  type: TypeEvenement
+  importance: ImportanceEvenement
+  pour: string | null
+  notes: string | null
+  cree_par: string
+  statut: 'confirme' | 'question' | 'refuse'
+  question_a: string | null
+  repondu_le: string | null
+  annuel: boolean
+  annee_naissance: number | null
+  cree_le: string
+}
+
+export type Projet = {
+  id: string
+  genre: 'travaux' | 'envie'
+  titre: string
+  prix: number | null
+  lien: string | null
+  priorite: 'basse' | 'normale' | 'haute'
+  notes: string | null
+  fait: boolean
+  fait_le: string | null
+  cree_par: string | null
   cree_le: string
 }

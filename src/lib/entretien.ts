@@ -46,3 +46,15 @@ export const IDEES_ENTRETIEN: { titre: string; categorie: string; frequence_mois
   { titre: "Renouvellement de l'assurance habitation", categorie: 'contrats', frequence_mois: 12 },
   { titre: 'Tailler la haie', categorie: 'jardin', frequence_mois: 6 },
 ]
+
+/** L'échéance approche (ou est passée) : c'est le moment d'agir */
+export function aPrevoirMaintenant(e: Pick<Entretien, 'prochaine' | 'prevenir_jours'>): boolean {
+  if (!e.prochaine) return false
+  return ecartJours(aujourdhui(), e.prochaine) <= e.prevenir_jours
+}
+
+const NOMS_MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+
+export function nomDuMois(mois: number | null): string | null {
+  return mois ? NOMS_MOIS[mois - 1] : null
+}

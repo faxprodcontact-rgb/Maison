@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { texteSur } from '../components/ui'
 import { codeInvitation, oublierInvitation } from '../lib/invitation'
-import { supabase } from '../lib/supabase'
+import { rpc, supabase } from '../lib/supabase'
 
 type Place = { cle: string; prenom: string; couleur: string }
 
@@ -16,7 +16,7 @@ export function Rejoindre({ email, rejoint }: { email: string; rejoint: () => vo
     e.preventDefault()
     setEnvoi(true)
     setErreur(null)
-    const { data, error } = await supabase.rpc('maison_places_libres', { p_code: code })
+    const { data, error } = await rpc('places_libres', { p_code: code })
     setEnvoi(false)
     if (error) return setErreur(error.message)
     setPlaces((data ?? []) as Place[])
@@ -25,7 +25,7 @@ export function Rejoindre({ email, rejoint }: { email: string; rejoint: () => vo
   async function choisir(place: Place) {
     setEnvoi(true)
     setErreur(null)
-    const { error } = await supabase.rpc('maison_rejoindre', { p_code: code, p_cle: place.cle })
+    const { error } = await rpc('rejoindre', { p_code: code, p_cle: place.cle })
     setEnvoi(false)
     if (error) return setErreur(error.message)
     oublierInvitation()

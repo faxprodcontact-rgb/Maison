@@ -1,178 +1,100 @@
-import { ChevronRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { BellRing, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { LigneTache, useTerminerTache } from '../components/Taches'
-import { Liste, Pastille, Section } from '../components/ui'
-import { calculerSolde } from '../lib/budget'
-import { euros } from '../lib/categories'
-import { ajouterJours, aujourdhui, debutMois, delai, finMois, jourComplet, majuscule, nomMoisSeul } from '../lib/dates'
-import { etatEntretien } from '../lib/entretien'
+import { CarteEvenement, QuestionsEnAttente } from '../components/Agenda'
+import { MaisonDessin, couleurTexteSurCiel, momentDeLaJournee } from '../components/MaisonDessin'
+import { Messages } from '../components/Messages'
+import { Pastille } from '../components/ui'
+import { aRappeler } from '../lib/agenda'
+import { categorieEntretien } from '../lib/categories'
+import { aujourdhui, delai, jourComplet, majuscule } from '../lib/dates'
+import { aPrevoirMaintenant } from '../lib/entretien'
 import { useFoyer } from '../lib/foyer'
 import { table } from '../lib/supabase'
-import type { Article, Depense, Entretien, Solde, Tache } from '../lib/types'
+import type { Entretien, Evenement } from '../lib/types'
 import { useLive } from '../lib/useLive'
 
 export function Accueil() {
-  const { moi, autre } = useFoyer()
-  const jour = aujourdhui()
-  const maintenant = new Date()
-  const annee = maintenant.getFullYear()
-  const mois = maintenant.getMonth()
+  const { moi } = useFoyer()
+  const moment = momentDeLaJournee()
+  const texte = couleurTexteSurCiel(moment)
+  const salut = moment === 'soir' || moment === 'nuit' ? 'Bonsoir' : 'Bonjour'
 
-  const { lignes: taches, setLignes: setTaches, recharger: rechargerTaches } = useLive<Tache>('taches', () =>
-    table('taches').select('*').is('fait_le', null).lte('echeance', jour).order('echeance'),
+  const { lignes: evenements, setLignes, recharger } = useLive<Evenement>('evenements', () =>
+    table('evenements').select('*').order('le'),
   )
-  const { lignes: courses } = useLive<Pick<Article, 'id' | 'nom'>>('courses', () =>
-    table('courses').select('id, nom').eq('coche', false).order('cree_le'),
-  )
-  const { lignes: depenses } = useLive<Pick<Depense, 'montant' | 'est_remboursement'>>('depenses', () =>
-    table('depenses').select('montant, est_remboursement').gte('le', debutMois(annee, mois)).lte('le', finMois(annee, mois)),
-  )
-  const { lignes: soldes } = useLive<Solde>('depenses', () => table('budget_soldes').select('*'))
   const { lignes: entretien } = useLive<Entretien>('entretien', () =>
-    table('entretien').select('*').lte('prochaine', ajouterJours(jour, 30)).order('prochaine'),
+    table('entretien').select('*').not('prochaine', 'is', null).order('prochaine'),
   )
 
-  const terminer = useTerminerTache(
-    (id, maj) => setTaches((l) => (maj ? l?.map((t) => (t.id === id ? { ...t, ...maj } : t)) : l) ?? l),
-    () => void rechargerTaches(),
+  const appliquer = (id: string, maj: Partial<Evenement> | null) =>
+    setLignes((l) => (maj ? l?.map((e) => (e.id === id ? { ...e, ...maj } : e)) : l?.filter((e) => e.id !== id)) ?? l)
+
+  const rappels = aRappeler(evenements ?? [])
+  const aEntretenir = (entretien ?? []).filter(aPrevoirMaintenant).slice(0, 4)
+  const questions = (evenements ?? []).filter(
+    (e) => (e.statut === 'question' && e.question_a === moi.cle) || (e.statut === 'refuse' && e.cree_par === moi.cle),
   )
-
-  const aFaire = (taches ?? []).filter((t) => t.echeance && t.echeance <= jour)
-  const enRetard = aFaire.filter((t) => t.echeance && t.echeance < jour).length
-  const totalMois = (depenses ?? []).filter((d) => !d.est_remboursement).reduce((s, d) => s + Number(d.montant), 0)
-  const solde = calculerSolde(soldes ?? [], moi.cle, autre.cle)
-  const prochainEntretien = (entretien ?? [])[0]
-  const entretiensEnRetard = (entretien ?? []).filter((e) => etatEntretien(e) === 'retard').length
-  const nbCourses = courses?.length ?? 0
-
-  const heure = maintenant.getHours()
-  const salut = heure >= 18 || heure < 5 ? 'Bonsoir' : 'Bonjour'
+  const rienABientot = rappels.length === 0 && aEntretenir.length === 0 && questions.length === 0
 
   return (
     <>
-      <header className="flex items-start gap-3 px-5 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-6">
-        <div className="flex-1">
-          <p className="text-encre-2">{majuscule(jourComplet(jour))}</p>
-          <h1 className="titre-page mt-1.5">
-            {salut} {moi.prenom}
-          </h1>
+      <header className="relative overflow-hidden rounded-b-[2.2rem]">
+        <MaisonDessin moment={moment} className="block aspect-[4/3] max-h-[24rem] w-full" />
+        <div
+          className="absolute inset-x-0 top-0 flex items-start gap-3 px-5 pt-[calc(env(safe-area-inset-top)+1.25rem)]"
+          style={{ color: texte }}
+        >
+          <div className="flex-1">
+            <p className="text-[0.95rem] font-semibold opacity-80">{majuscule(jourComplet(aujourdhui()))}</p>
+            <h1 className="titre-page mt-1">
+              {salut} {moi.prenom}
+            </h1>
+          </div>
+          <Link to="/reglages" aria-label="Réglages" className="rounded-full">
+            <Pastille cle={moi.cle} taille={40} />
+          </Link>
         </div>
-        <Link to="/reglages" aria-label="Réglages" className="mt-1 rounded-full">
-          <Pastille cle={moi.cle} taille={40} />
-        </Link>
       </header>
 
-      <ul className="liste mx-3 overflow-hidden rounded-2xl bg-surface">
-        <Resume vers="/taches" detail={enRetard > 0 ? `Dont ${enRetard} en retard` : undefined} alerte={enRetard > 0}>
-          {aFaire.length > 0 ? (
-            <>
-              <b>
-                {aFaire.length} tâche{aFaire.length > 1 ? 's' : ''}
-              </b>{' '}
-              à faire aujourd'hui
-            </>
-          ) : (
-            <>
-              <b>Rien</b> à faire aujourd'hui
-            </>
-          )}
-        </Resume>
+      <div className="mt-6">
+        <Messages />
+      </div>
 
-        <Resume
-          vers="/courses"
-          detail={nbCourses > 0 ? (courses ?? []).slice(0, 5).map((c) => c.nom).join(', ') + (nbCourses > 5 ? '…' : '') : undefined}
-        >
-          {nbCourses > 0 ? (
-            <>
-              <b>
-                {nbCourses} article{nbCourses > 1 ? 's' : ''}
-              </b>{' '}
-              sur la liste de courses
-            </>
-          ) : (
-            <>
-              Liste de courses <b>vide</b>
-            </>
-          )}
-        </Resume>
-
-        <Resume
-          vers="/budget"
-          detail={
-            solde === 0
-              ? "Vous êtes à l'équilibre"
-              : solde > 0
-                ? `${autre.prenom} vous doit ${euros(solde)}`
-                : `Vous devez ${euros(-solde)} à ${autre.prenom}`
-          }
-        >
-          <b className="nombre">{euros(totalMois)}</b> dépensés en {nomMoisSeul(annee, mois)}
-        </Resume>
-
-        <Resume
-          vers="/entretien"
-          alerte={entretiensEnRetard > 0}
-          detail={
-            entretiensEnRetard > 1
-              ? `${entretiensEnRetard} entretiens en retard`
-              : (entretien ?? []).length > 1
-                ? `Et ${(entretien ?? []).length - 1} autre${(entretien ?? []).length > 2 ? 's' : ''} ce mois-ci`
-                : undefined
-          }
-        >
-          {prochainEntretien?.prochaine ? (
-            <>
-              <b>{prochainEntretien.titre}</b>{' '}
-              {etatEntretien(prochainEntretien) === 'retard' ? 'en retard' : delai(prochainEntretien.prochaine)}
-            </>
-          ) : (
-            <>
-              <b>Aucun entretien</b> dans les 30 jours
-            </>
-          )}
-        </Resume>
-      </ul>
-
-      {aFaire.length > 0 && (
-        <div className="mt-8">
-          <Section titre="À faire aujourd'hui">
-            <Liste>
-              {aFaire.map((t) => (
-                <LigneTache key={t.id} tache={t} terminer={terminer} />
-              ))}
-            </Liste>
-          </Section>
-        </div>
+      {!rienABientot && (
+        <section aria-labelledby="titre-bientot" className="mt-9 px-3">
+          <h2 id="titre-bientot" className="px-2 pb-3 text-[1.35rem] font-bold tracking-tight">
+            Bientôt
+          </h2>
+          <div className="grid gap-3">
+            {evenements && <QuestionsEnAttente evenements={evenements} appliquer={appliquer} recharger={() => void recharger()} />}
+            {rappels.map((o) => (
+              <Link key={`${o.evenement.id}-${o.le}`} to="/agenda" className="block">
+                <CarteEvenement occurrence={o} avecDate />
+              </Link>
+            ))}
+            {aEntretenir.map((e) => {
+              const c = categorieEntretien(e.categorie)
+              return (
+                <Link key={e.id} to="/entretien" className="flex items-start gap-3 rounded-2xl bg-surface px-3.5 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2">
+                    <c.icone size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <BellRing size={14} className="shrink-0 text-retard" /> {e.titre}
+                    </span>
+                    <span className="mt-0.5 block text-[0.88rem] text-encre-2">
+                      {e.prochaine && e.prochaine < aujourdhui() ? 'En retard. ' : `${majuscule(delai(e.prochaine ?? ''))}. `}
+                      {e.rappel}
+                    </span>
+                  </span>
+                  <ChevronRight size={18} className="mt-1 shrink-0 text-encre-3" />
+                </Link>
+              )
+            })}
+          </div>
+        </section>
       )}
     </>
-  )
-}
-
-function Resume({
-  vers,
-  children,
-  detail,
-  alerte,
-}: {
-  vers: string
-  children: ReactNode
-  detail?: string
-  alerte?: boolean
-}) {
-  return (
-    <li>
-      <Link to={vers} className="flex items-center gap-3 px-4 py-4">
-        <span className="min-w-0 flex-1">
-          <span className="resume block text-[1.3rem] leading-tight tracking-tight">{children}</span>
-          {detail && (
-            <span className={`mt-1 block truncate text-[0.9rem] ${alerte ? 'font-semibold text-retard' : 'text-encre-2'}`}>
-              {detail}
-            </span>
-          )}
-        </span>
-        <ChevronRight size={20} className="shrink-0 text-encre-3" />
-      </Link>
-    </li>
   )
 }

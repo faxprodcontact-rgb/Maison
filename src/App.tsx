@@ -8,6 +8,7 @@ import { supabase, table } from './lib/supabase'
 import type { Membre } from './lib/types'
 import { useLive } from './lib/useLive'
 import { Accueil } from './pages/Accueil'
+import { Agenda } from './pages/Agenda'
 import { Budget } from './pages/Budget'
 import { Connexion } from './pages/Connexion'
 import { Courses } from './pages/Courses'
@@ -74,6 +75,7 @@ function Maison({ session }: { session: Session }) {
           <Route path="/" element={<Accueil />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/taches" element={<Taches />} />
+          <Route path="/agenda" element={<Agenda />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/entretien" element={<Entretien />} />
           <Route path="/reglages" element={<Reglages />} />
