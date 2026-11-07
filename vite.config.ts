@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Adresse de base : « / » en local, « /fuze-arena-test/maison/ » (par exemple) une fois en ligne
+const base = process.env.BASE ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -15,8 +19,9 @@ export default defineConfig({
         short_name: 'Maison',
         description: 'Courses, tâches, budget et entretien de la maison',
         lang: 'fr',
-        start_url: '/',
-        scope: '/',
+        id: 'maison',
+        start_url: './',
+        scope: './',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#EDF1EE',
@@ -28,7 +33,6 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
     }),

@@ -17,19 +17,28 @@ L'application de la maison de Simon et Romane : courses, tâches, budget et entr
 - Seuls les comptes reliés dans `maison_membres` peuvent lire ou modifier les données.
 - Hébergement : Vercel, mise en ligne automatique à chaque modification du dépôt.
 
-## Mise en place
+## Comptes
 
-1. Exécuter `supabase/migrations/0001_init.sql` sur le projet Supabase.
-2. Créer les deux comptes dans Supabase : Authentication > Users > Add user > Create new user, en cochant « Auto Confirm User ».
-3. Relier chaque compte à sa personne :
+Chacun crée son compte depuis l'app (« Créer un compte »), puis entre le **code du foyer** et choisit qui il est.
+Le code n'est pas dans ce dépôt : il est enregistré haché dans la base (voir `supabase/migrations/0002_rejoindre_le_foyer.sql`
+pour le changer). Une fois Simon et Romane inscrits, plus personne ne peut rejoindre le foyer, même avec le code.
 
-   ```sql
-   update public.maison_membres set user_id = (select id from auth.users where email = 'email-de-simon') where cle = 'simon';
-   update public.maison_membres set user_id = (select id from auth.users where email = 'email-de-romane') where cle = 'romane';
-   ```
+Un lien d'invitation pré-remplit le code : `…/maison/?code=XXXX-XXXX`.
 
-4. Renseigner l'adresse du projet et sa clé publique dans `src/lib/config.ts`.
-5. Importer le dépôt sur Vercel. Aucun réglage n'est nécessaire.
+## Mise en ligne
+
+L'app est publiée sur GitHub Pages, dans un sous-dossier `maison` d'un dépôt public :
+
+```bash
+scripts/publier.sh ../fuze-arena-test
+```
+
+puis commit et push dans ce dépôt. Les données ne passent jamais par GitHub : elles restent dans Supabase,
+protégées par les règles d'accès de la base.
+
+## Base de données
+
+Les scripts SQL sont dans `supabase/migrations/`, à exécuter dans l'ordre sur le projet Supabase.
 
 ## Développement
 

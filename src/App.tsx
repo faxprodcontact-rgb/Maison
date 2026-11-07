@@ -13,6 +13,7 @@ import { Connexion } from './pages/Connexion'
 import { Courses } from './pages/Courses'
 import { Entretien } from './pages/Entretien'
 import { Reglages } from './pages/Reglages'
+import { Rejoindre } from './pages/Rejoindre'
 import { Taches } from './pages/Taches'
 
 export function App() {
@@ -30,7 +31,7 @@ export function App() {
 }
 
 function Maison({ session }: { session: Session }) {
-  const { lignes: membres, erreur } = useLive<Membre>('membres', () =>
+  const { lignes: membres, erreur, recharger } = useLive<Membre>('membres', () =>
     table('membres').select('cle, prenom, couleur, user_id').order('cle', { ascending: false }),
   )
 
@@ -50,21 +51,19 @@ function Maison({ session }: { session: Session }) {
 
   if (!membres && !erreur) return <Chargement />
 
-  if (!foyer) {
+  if (erreur && !membres) {
     return (
       <main className="mx-auto max-w-md px-6 pt-[calc(env(safe-area-inset-top)+4rem)]">
-        <h1 className="titre-page">Compte pas encore relié</h1>
-        <p className="mt-4 text-encre-2">
-          Vous êtes connecté avec {session.user.email}, mais ce compte n'est pas encore relié au foyer. Une fois relié,
-          rouvrez l'app.
-        </p>
-        {erreur && <p className="mt-3 text-retard">{erreur}</p>}
-        <button type="button" className="bouton bouton-secondaire mt-8" onClick={() => void supabase.auth.signOut()}>
-          Se déconnecter
+        <h1 className="titre-page">Connexion au foyer impossible</h1>
+        <p className="mt-4 text-retard">{erreur}</p>
+        <button type="button" className="bouton bouton-principal mt-8" onClick={() => void recharger()}>
+          Réessayer
         </button>
       </main>
     )
   }
+
+  if (!foyer) return <Rejoindre email={session.user.email ?? ''} rejoint={() => void recharger()} />
 
   return (
     <FoyerContext.Provider value={foyer}>
