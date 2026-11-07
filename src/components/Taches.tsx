@@ -4,7 +4,8 @@ import { ajouterJours, aujourdhui, delai, depuisISO, ecartJours, jourRelatif, ma
 import { useFoyer } from '../lib/foyer'
 import { table } from '../lib/supabase'
 import { prochaineEcheance, texteRepetition } from '../lib/taches'
-import type { Repetition, Tache } from '../lib/types'
+import { GENRES, PIECES_PLAN, AUTRES_PIECES, genre as genreDe, piece as pieceDe } from '../lib/pieces'
+import type { GenreTache, Repetition, Tache } from '../lib/types'
 import { useToast } from './Toast'
 import { Champ, Choix, Groupe, Pastille } from './ui'
 
@@ -66,12 +67,16 @@ export function LigneTache({
   tache,
   terminer,
   modifier,
+  avecPiece = false,
 }: {
   tache: Tache
   terminer: (t: Tache) => void
   modifier?: (t: Tache) => void
+  avecPiece?: boolean
 }) {
   const { membre } = useFoyer()
+  const g = genreDe(tache.genre ?? 'faire')
+  const p = avecPiece ? pieceDe(tache.piece) : undefined
   const fait = tache.fait_le !== null
   const couleur = tache.qui ? membre(tache.qui)?.couleur : undefined
   const repetition = texteRepetition(tache.repetition, tache.intervalle)
@@ -106,11 +111,19 @@ export function LigneTache({
         disabled={!modifier}
       >
         <span className="flex-1">
-          <span className={`block text-[1.05rem] leading-snug ${fait ? 'text-encre-3 line-through' : ''}`}>
-            {tache.titre}
+          <span className={`flex items-start gap-1.5 text-[1.05rem] leading-snug ${fait ? 'text-encre-3 line-through' : ''}`}>
+            {tache.genre && tache.genre !== 'faire' && (
+              <g.icone size={16} className="mt-1 shrink-0 text-encre-2" aria-label={g.nom} />
+            )}
+            <span>{tache.titre}</span>
           </span>
-          {(quand || repetition) && (
+          {(quand || repetition || p) && (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.85rem] text-encre-2">
+              {p && (
+                <span className="inline-flex items-center gap-1">
+                  <p.icone size={13} /> {p.nom}
+                </span>
+              )}
               {quand && <span className={quand.ton}>{quand.texte}</span>}
               {repetition && !fait && (
                 <span className="inline-flex items-center gap-1 text-encre-3">
@@ -160,6 +173,8 @@ export function FormulaireTache({
   const [repetition, setRepetition] = useState<Repetition>(tache.repetition ?? 'aucune')
   const [intervalle, setIntervalle] = useState(String(tache.intervalle ?? 1))
   const [notes, setNotes] = useState(tache.notes ?? '')
+  const [pieceChoisie, setPiece] = useState(tache.piece ?? '')
+  const [genre, setGenre] = useState<GenreTache>(tache.genre ?? 'faire')
   const existante = Boolean(tache.id)
 
   const raccourcis = [
@@ -180,6 +195,8 @@ export function FormulaireTache({
       repetition,
       intervalle: n,
       notes: notes.trim() || null,
+      piece: pieceChoisie || null,
+      genre,
     }
     fini()
     if (existante && tache.id) {
@@ -279,6 +296,34 @@ export function FormulaireTache({
             {unite}
           </label>
         )}
+      </Groupe>
+
+      <Groupe etiquette="Genre">
+        <div className="flex flex-wrap gap-2">
+          {GENRES.map((gr) => (
+            <button key={gr.cle} type="button" className="puce" aria-pressed={genre === gr.cle} onClick={() => setGenre(gr.cle)}>
+              <gr.icone size={16} />
+              {gr.nom}
+            </button>
+          ))}
+        </div>
+      </Groupe>
+
+      <Groupe etiquette="Pièce">
+        <div className="flex flex-wrap gap-2">
+          {[...PIECES_PLAN, ...AUTRES_PIECES].map((pi) => (
+            <button
+              key={pi.cle}
+              type="button"
+              className="puce"
+              aria-pressed={pieceChoisie === pi.cle}
+              onClick={() => setPiece(pieceChoisie === pi.cle ? '' : pi.cle)}
+            >
+              <pi.icone size={16} />
+              {pi.nom}
+            </button>
+          ))}
+        </div>
       </Groupe>
 
       <Champ etiquette="Notes">

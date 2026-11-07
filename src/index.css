@@ -22,6 +22,14 @@
   --mot-doux-encre: #c2366f;
   --mot-important: #fdecea;
   --mot-normal: #ffffff;
+  --piece-salon: #d9e6f6;
+  --piece-cuisine: #f7ebc4;
+  --piece-couloir: #eceeea;
+  --piece-amis: #f8dccf;
+  --piece-sdb: #d0ece9;
+  --piece-chambre: #d8eedb;
+  --piece-dressing: #e6def3;
+  --piece-autre: #e4e9e5;
   color-scheme: light;
 }
 
@@ -47,6 +55,14 @@
     --mot-doux-encre: #f08bb2;
     --mot-important: #3a2321;
     --mot-normal: #1b221f;
+    --piece-salon: #26354a;
+    --piece-cuisine: #3d3624;
+    --piece-couloir: #252c29;
+    --piece-amis: #422c25;
+    --piece-sdb: #1f3a37;
+    --piece-chambre: #22392a;
+    --piece-dressing: #332c43;
+    --piece-autre: #27302c;
     color-scheme: dark;
   }
 }
@@ -233,6 +249,24 @@
   .niveau-actif[data-niveau='important'] {
     background: var(--mot-important);
     color: var(--retard);
+  }
+}
+
+@layer components {
+  .plan .piece {
+    cursor: pointer;
+    outline: none;
+  }
+  .plan .piece polygon {
+    transition: filter 150ms;
+  }
+  .plan .piece:hover polygon,
+  .plan .piece:active polygon {
+    filter: brightness(0.94) saturate(1.2);
+  }
+  .plan .piece:focus-visible polygon {
+    stroke: var(--encre);
+    stroke-width: 3;
   }
 }
 
