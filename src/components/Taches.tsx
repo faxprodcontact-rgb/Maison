@@ -228,8 +228,8 @@ export function FormulaireTache({
           valeur={qui}
           changer={setQui}
           options={[
-            { valeur: '', libelle: <><Pastille cle={null} taille={18} /> Nous deux</> },
-            ...membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} /> {m.prenom}</> })),
+            { valeur: '', libelle: <><Pastille cle={null} taille={18} decoratif /> Nous deux</> },
+            ...membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} decoratif /> {m.prenom}</> })),
           ]}
         />
       </Groupe>

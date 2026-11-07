@@ -7,7 +7,16 @@ import { useFoyer } from '../lib/foyer'
  * C'est le repère visuel de toute l'app : la couleur de Simon, celle de Romane,
  * et les deux côte à côte pour « nous deux ».
  */
-export function Pastille({ cle, taille = 22 }: { cle: string | null | undefined; taille?: number }) {
+export function Pastille({
+  cle,
+  taille = 22,
+  decoratif = false,
+}: {
+  cle: string | null | undefined
+  taille?: number
+  /** À côté d'un prénom écrit en toutes lettres : ignorée par les lecteurs d'écran */
+  decoratif?: boolean
+}) {
   const { membres, membre } = useFoyer()
   const style = (couleur: string | undefined) => ({
     width: taille,
@@ -19,7 +28,11 @@ export function Pastille({ cle, taille = 22 }: { cle: string | null | undefined;
   if (!cle) {
     const [a, b] = membres
     return (
-      <span role="img" className="relative inline-flex shrink-0" style={{ width: taille * 1.55, height: taille }} aria-label="Nous deux">
+      <span
+        className="relative inline-flex shrink-0"
+        style={{ width: taille * 1.55, height: taille }}
+        {...(decoratif ? { 'aria-hidden': true } : { role: 'img', 'aria-label': 'Nous deux' })}
+      >
         <span className="pastille absolute left-0" style={style(a?.couleur)} aria-hidden="true">
           {a?.prenom[0]}
         </span>
@@ -31,7 +44,11 @@ export function Pastille({ cle, taille = 22 }: { cle: string | null | undefined;
   }
   const m = membre(cle)
   return (
-    <span role="img" className="pastille shrink-0" style={style(m?.couleur)} aria-label={m?.prenom ?? 'Inconnu'}>
+    <span
+      className="pastille shrink-0"
+      style={style(m?.couleur)}
+      {...(decoratif ? { 'aria-hidden': true } : { role: 'img', 'aria-label': m?.prenom ?? 'Inconnu' })}
+    >
       <span aria-hidden="true">{m?.prenom[0] ?? '?'}</span>
     </span>
   )

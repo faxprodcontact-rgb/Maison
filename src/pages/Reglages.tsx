@@ -19,7 +19,7 @@ export function Reglages() {
       </header>
 
       <div className="mx-3 flex items-center gap-4 rounded-2xl bg-surface px-4 py-4">
-        <Pastille cle={moi.cle} taille={44} />
+        <Pastille cle={moi.cle} taille={44} decoratif />
         <div className="min-w-0 flex-1">
           <p className="text-[1.15rem] font-semibold">{moi.prenom}</p>
           <p className="truncate text-encre-2">{email}</p>

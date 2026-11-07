@@ -91,7 +91,7 @@ export function Budget() {
           ) : (
             <>
               <p className="flex items-center gap-2.5 text-[1.15rem] leading-snug font-semibold">
-                <Pastille cle={debiteur.cle} taille={24} />
+                <Pastille cle={debiteur.cle} taille={24} decoratif />
                 <span>
                   {debiteur.cle === moi.cle ? 'Vous devez' : `${debiteur.prenom} vous doit`}{' '}
                   <span className="nombre">{euros(montantDu)}</span>
@@ -197,7 +197,7 @@ export function Budget() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[1.02rem]">{d.libelle || c.nom}</span>
                       <span className="mt-0.5 flex items-center gap-1.5 text-[0.85rem] text-encre-2">
-                        <Pastille cle={d.paye_par} taille={16} />
+                        <Pastille cle={d.paye_par} taille={16} decoratif />
                         {d.est_remboursement
                           ? `${payeur?.prenom} a remboursé ${beneficiaire?.prenom}`
                           : d.pour
@@ -264,7 +264,7 @@ function RepartitionPayeurs({ parPersonne, total }: { parPersonne: Map<string, n
       <div className="mt-2.5 flex justify-between gap-4 text-[0.92rem]">
         {parts.map((p) => (
           <span key={p.membre.cle} className="flex items-center gap-1.5 text-encre-2">
-            <Pastille cle={p.membre.cle} taille={16} />
+            <Pastille cle={p.membre.cle} taille={16} decoratif />
             {p.membre.prenom} a payé <span className="nombre font-semibold text-encre">{euros(p.montant, true)}</span>
           </span>
         ))}
@@ -375,7 +375,7 @@ function FormulaireDepense({
           etiquette="Qui a payé ?"
           valeur={payePar}
           changer={setPayePar}
-          options={membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} /> {m.prenom}</> }))}
+          options={membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} decoratif /> {m.prenom}</> }))}
         />
       </Groupe>
 
@@ -386,8 +386,8 @@ function FormulaireDepense({
             valeur={pour}
             changer={setPour}
             options={[
-              { valeur: '', libelle: <><Pastille cle={null} taille={18} /> Nous deux</> },
-              ...membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} /> {m.prenom}</> })),
+              { valeur: '', libelle: <><Pastille cle={null} taille={18} decoratif /> Nous deux</> },
+              ...membres.map((m) => ({ valeur: m.cle, libelle: <><Pastille cle={m.cle} taille={18} decoratif /> {m.prenom}</> })),
             ]}
           />
           <p className="mt-2 text-[0.85rem] text-encre-3">

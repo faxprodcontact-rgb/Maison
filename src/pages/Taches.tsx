@@ -73,7 +73,7 @@ export function Taches() {
                 valeur: m.cle,
                 libelle: (
                   <>
-                    <Pastille cle={m.cle} taille={18} /> {m.prenom}
+                    <Pastille cle={m.cle} taille={18} decoratif /> {m.prenom}
                   </>
                 ),
               })),
