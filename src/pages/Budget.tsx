@@ -265,7 +265,7 @@ function RepartitionPayeurs({ parPersonne, total }: { parPersonne: Map<string, n
         {parts.map((p) => (
           <span key={p.membre.cle} className="flex items-center gap-1.5 text-encre-2">
             <Pastille cle={p.membre.cle} taille={16} decoratif />
-            {p.membre.prenom} a payé <span className="nombre font-semibold text-encre">{euros(p.montant, true)}</span>
+            {p.membre.prenom} a payé <span className="nombre font-semibold text-encre">{euros(p.montant)}</span>
           </span>
         ))}
       </div>

@@ -26,7 +26,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         className="pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4"
-        style={{ bottom: 'calc(var(--hauteur-nav) + env(safe-area-inset-bottom) + 12px)' }}
+        style={{ bottom: 'calc(var(--hauteur-nav) + env(safe-area-inset-bottom) + 5.5rem)' }}
         aria-live="polite"
       >
         {message && (

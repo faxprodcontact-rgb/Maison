@@ -52,6 +52,11 @@ const fmtJourSemaine = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' })
 const fmtMois = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
 const fmtMoisSeul = new Intl.DateTimeFormat('fr-FR', { month: 'long' })
 
+/** Termine une phrase par un point, sauf si elle en a déjà un (« 14 nov. »). */
+export function phrase(s: string): string {
+  return s.endsWith('.') ? s : `${s}.`
+}
+
 export function majuscule(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }

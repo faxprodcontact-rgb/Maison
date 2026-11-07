@@ -107,7 +107,7 @@ export function Accueil() {
                 : `Vous devez ${euros(-solde)} à ${autre.prenom}`
           }
         >
-          <b className="nombre">{euros(totalMois, true)}</b> dépensés en {nomMoisSeul(annee, mois)}
+          <b className="nombre">{euros(totalMois)}</b> dépensés en {nomMoisSeul(annee, mois)}
         </Resume>
 
         <Resume

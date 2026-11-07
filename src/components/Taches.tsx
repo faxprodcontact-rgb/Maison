@@ -1,6 +1,6 @@
 import { Check, Repeat } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
-import { ajouterJours, aujourdhui, delai, depuisISO, ecartJours, jourRelatif, majuscule } from '../lib/dates'
+import { ajouterJours, aujourdhui, delai, depuisISO, ecartJours, jourRelatif, majuscule, phrase } from '../lib/dates'
 import { useFoyer } from '../lib/foyer'
 import { table } from '../lib/supabase'
 import { prochaineEcheance, texteRepetition } from '../lib/taches'
@@ -48,7 +48,7 @@ export function useTerminerTache(appliquer: Appliquer, recharger: () => void) {
       return
     }
 
-    toast(repetee && prochaine ? `C'est noté. Prochaine fois : ${jourRelatif(prochaine)}.` : 'Tâche terminée.', {
+    toast(repetee && prochaine ? phrase(`C'est noté. Prochaine fois : ${jourRelatif(prochaine)}`) : 'Tâche terminée.', {
       libelle: 'Annuler',
       faire: async () => {
         appliquer(t.id, avant)
