@@ -20,6 +20,8 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
+    // Demande au téléphone de ne jamais effacer la mémoire de l'app (et donc la connexion)
+    void navigator.storage?.persist?.().catch(() => false)
     void supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data } = supabase.auth.onAuthStateChange((_evenement, s) => setSession(s))
     return () => data.subscription.unsubscribe()

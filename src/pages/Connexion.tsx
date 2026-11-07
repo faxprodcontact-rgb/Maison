@@ -4,8 +4,14 @@ import { supabase } from '../lib/supabase'
 
 type Mode = 'connexion' | 'inscription'
 
+/** Ouverte depuis l'icône de l'écran d'accueil (et non dans le navigateur) */
+const installee =
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (navigator as Navigator & { standalone?: boolean }).standalone === true
+
 export function Connexion() {
-  const [mode, setMode] = useState<Mode>(() => (codeInvitation() ? 'inscription' : 'connexion'))
+  // Le lien d'invitation propose de créer un compte, sauf dans l'app installée où l'on vient surtout se connecter
+  const [mode, setMode] = useState<Mode>(() => (codeInvitation() && !installee ? 'inscription' : 'connexion'))
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -106,6 +112,13 @@ export function Connexion() {
           {envoi ? 'Un instant…' : inscription ? 'Créer mon compte' : 'Se connecter'}
         </button>
       </form>
+
+      {installee && (
+        <p className="mt-6 rounded-2xl bg-surface px-4 py-3 text-[0.92rem] text-encre-2">
+          Sur l’écran d’accueil, Mervans garde sa propre connexion, à part de Safari ou Chrome. Connectez-vous une fois
+          ici : l’app s’en souviendra ensuite.
+        </p>
+      )}
 
       <p className="mt-6 text-center text-encre-2">
         {inscription ? 'Vous avez déjà un compte ?' : 'Pas encore de compte ?'}{' '}
