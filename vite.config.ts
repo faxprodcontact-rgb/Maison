@@ -15,9 +15,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Maison',
-        short_name: 'Maison',
-        description: 'Courses, tâches, budget et entretien de la maison',
+        name: 'Mervans',
+        short_name: 'Mervans',
+        description: 'Courses, tâches, budget et entretien de la maison de Simon et Romane',
         lang: 'fr',
         id: 'maison',
         start_url: './',

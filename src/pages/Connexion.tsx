@@ -62,8 +62,8 @@ export function Connexion() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col px-6 pt-[calc(env(safe-area-inset-top)+5rem)] pb-10">
       <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" className="size-16 rounded-[1.1rem]" />
-      <h1 className="titre-page mt-6">Maison</h1>
-      <p className="mt-3 text-encre-2">Courses, tâches, budget et entretien, partagés entre vous deux.</p>
+      <h1 className="titre-page mt-6">Mervans</h1>
+      <p className="mt-3 text-encre-2">Courses, tâches, budget et entretien de la maison, partagés entre vous deux.</p>
 
       <form onSubmit={valider} className="mt-10">
         <h2 className="mb-5 text-[1.3rem] font-semibold">{inscription ? 'Créer votre compte' : 'Connexion'}</h2>

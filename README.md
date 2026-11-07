@@ -1,6 +1,6 @@
-# Maison
+# Mervans
 
-L'application de la maison de Simon et Romane : courses, tâches, budget et entretien, partagés en temps réel entre vos deux téléphones.
+L'application de la maison de Simon et Romane : courses, tâches, budget et entretien, partagés en temps réel entre vos deux téléphones. Logo : `design/logo-mervans.svg`.
 
 ## Ce que fait l'app
 
