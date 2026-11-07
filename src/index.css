@@ -1,0 +1,209 @@
+@import 'tailwindcss';
+
+:root {
+  --fond: #edf1ee;
+  --surface: #ffffff;
+  --surface-2: #e2e8e4;
+  --encre: #17221e;
+  --encre-2: #52625b;
+  --encre-3: #85948d;
+  --trait: #dde4df;
+  --retard: #b3372b;
+  --bientot: #17221e;
+  --ok: #2f7a4f;
+  --hauteur-nav: 4.25rem;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #121715;
+    --surface: #1b221f;
+    --surface-2: #27302c;
+    --encre: #e7ece9;
+    --encre-2: #a3b1aa;
+    --encre-3: #74837c;
+    --trait: #29322e;
+    --retard: #ef7d6f;
+    --bientot: #e7ece9;
+    --ok: #6fc191;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-fond: var(--fond);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-encre: var(--encre);
+  --color-encre-2: var(--encre-2);
+  --color-encre-3: var(--encre-3);
+  --color-trait: var(--trait);
+  --color-retard: var(--retard);
+  --color-bientot: var(--bientot);
+  --color-ok: var(--ok);
+  --font-sans: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--fond);
+    color: var(--encre);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.45;
+    font-optical-sizing: auto;
+    overscroll-behavior-y: none;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2.5px solid var(--encre);
+    outline-offset: 2px;
+  }
+  .nombre {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .titre-page {
+    font-size: 2.6rem;
+    line-height: 0.95;
+    font-weight: 750;
+    font-stretch: 82%;
+    letter-spacing: -0.025em;
+  }
+
+  .pastille {
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+
+  .liste > li + li {
+    border-top: 1px solid var(--trait);
+  }
+
+  .champ {
+    width: 100%;
+    border-radius: 0.9rem;
+    border: 1.5px solid var(--trait);
+    background: var(--fond);
+    padding: 0.8rem 0.95rem;
+    font-size: 1rem;
+    outline: none;
+  }
+  .champ:focus {
+    border-color: var(--encre);
+    background: var(--surface);
+  }
+  .champ::placeholder {
+    color: var(--encre-3);
+  }
+
+  .puce {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--trait);
+    background: var(--surface);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 550;
+  }
+  .puce[aria-checked='true'],
+  .puce[aria-pressed='true'] {
+    background: var(--encre);
+    border-color: var(--encre);
+    color: var(--fond);
+  }
+
+  .bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.95rem;
+    padding: 0.85rem 1.1rem;
+    font-weight: 650;
+    font-size: 1rem;
+  }
+  .bouton:disabled {
+    opacity: 0.5;
+  }
+  .bouton-principal {
+    background: var(--encre);
+    color: var(--fond);
+  }
+  .bouton-secondaire {
+    background: var(--surface-2);
+    color: var(--encre);
+  }
+  .bouton-danger {
+    color: var(--retard);
+  }
+
+  .case {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    transition:
+      background-color 150ms,
+      transform 150ms;
+  }
+  .case[data-coche='true'] {
+    background: currentColor;
+  }
+  .case[data-coche='true'] svg {
+    color: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panneau {
+    animation: monter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .voile {
+    animation: apparaitre 200ms ease-out;
+  }
+  .toast {
+    animation: monter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .case:active {
+    transform: scale(0.88);
+  }
+}
+
+@keyframes monter {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@keyframes apparaitre {
+  from {
+    opacity: 0;
+  }
+}
