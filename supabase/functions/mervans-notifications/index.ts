@@ -19,7 +19,7 @@ const CORS = {
 }
 
 type Cles = { appel: string; publique: string; privee: string }
-type Preference = 'notif_mots' | 'notif_agenda' | 'notif_matin'
+type Preference = 'notif_mots' | 'notif_agenda' | 'notif_matin' | 'notif_taches'
 type Notif = { titre: string; texte: string; url: string; tag?: string }
 type Ligne = Record<string, unknown>
 
@@ -94,11 +94,17 @@ function quand(iso: string): string {
   if (iso === plusJours(a, 1)) return 'demain'
   return fmtJour.format(new Date(`${iso}T12:00:00Z`))
 }
-function heure(h: unknown): string {
+function heureCourte(h: unknown): string {
   if (typeof h !== 'string' || !h) return ''
   const [hh, mm] = h.split(':')
-  return mm === '00' ? ` à ${Number(hh)} h` : ` à ${Number(hh)} h ${mm}`
+  return mm === '00' ? `${Number(hh)} h` : `${Number(hh)} h ${mm}`
 }
+function heure(h: unknown): string {
+  const court = heureCourte(h)
+  return court ? ` à ${court}` : ''
+}
+const maintenantParis = () =>
+  new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date())
 
 // ---------------------------------------------------------------------------
 // Envoi
@@ -106,7 +112,7 @@ function heure(h: unknown): string {
 async function envoyer(p: string, pour: string[], pref: Preference | null, n: Notif) {
   if (pour.length === 0) return []
   const membres = await sql`
-    select cle, notif_mots, notif_agenda, notif_matin from ${sql(`${p}membres`)}
+    select cle, notif_mots, notif_agenda, notif_matin, notif_taches from ${sql(`${p}membres`)}
     where cle in ${sql(pour)} and user_id is not null`
   const ok = membres.filter((m) => !pref || m[pref]).map((m) => m.cle as string)
   if (ok.length === 0) return []
@@ -200,6 +206,56 @@ async function surEvenement(p: string, operation: string, e: Ligne, ancien: Lign
 }
 
 // ---------------------------------------------------------------------------
+// Pense-bête : prévenir quand l'autre ajoute quelque chose pour vous, puis rappel à l'heure
+// ---------------------------------------------------------------------------
+async function surTache(p: string, operation: string, t: Ligne) {
+  if (operation !== 'INSERT') return []
+  const qui = (t.qui as string | null) ?? null
+  const createur = (t.cree_par as string | null) ?? null
+  const echeance = (t.echeance as string | null) ?? null
+  if (!qui || !createur || qui === createur || !echeance) return []
+  const auj = aujourdhui()
+  if (echeance < auj || echeance > plusJours(auj, 7)) return []
+  const noms = await prenoms(p)
+  const rappel = t.rappel_a ? `, rappel${heure(t.rappel_a)}` : ''
+  return envoyer(p, [qui], 'notif_taches', {
+    titre: `📝 ${noms[createur]} a ajouté pour vous`,
+    texte: `${t.titre} (${quand(echeance)}${rappel})`,
+    url: `${APP}#/taches`,
+    tag: `tache-${t.id}`,
+  })
+}
+
+async function rappels(p: string) {
+  const t = (nom: string) => sql(`${p}${nom}`)
+  const auj = aujourdhui()
+  const dues = await sql`
+    select id, titre, qui from ${t('taches')}
+    where fait_le is null and echeance = ${auj}::date and rappel_a is not null
+      and rappel_a <= ${maintenantParis()}::time and rappel_envoye_le is null`
+  if (dues.length === 0) return []
+  await sql`update ${t('taches')} set rappel_envoye_le = now() where id in ${sql(dues.map((d) => d.id as string))}`
+  const membres = await sql`select cle from ${t('membres')} where user_id is not null`
+  const parPersonne = new Map<string, string[]>()
+  for (const d of dues) {
+    const pour = d.qui ? [d.qui as string] : membres.map((m) => m.cle as string)
+    for (const cle of pour) parPersonne.set(cle, [...(parPersonne.get(cle) ?? []), d.titre as string])
+  }
+  const resultats: Ligne[] = []
+  for (const [cle, titres] of parPersonne) {
+    resultats.push(
+      ...(await envoyer(p, [cle], 'notif_taches', {
+        titre: titres.length > 1 ? `📝 Pense-bête : ${titres.length} choses à faire` : '📝 Pense-bête',
+        texte: titres.join('\n'),
+        url: `${APP}#/taches`,
+        tag: `rappel-${auj}-${maintenantParis()}`,
+      })),
+    )
+  }
+  return resultats
+}
+
+// ---------------------------------------------------------------------------
 // Résumé du matin (8 h à Paris)
 // ---------------------------------------------------------------------------
 async function matin(p: string, force: boolean) {
@@ -215,7 +271,9 @@ async function matin(p: string, force: boolean) {
   const evenements = await sql`
     select titre, le::text as le, heure::text as heure, type, importance, statut, question_a, annuel, annee_naissance
     from ${t('evenements')} where statut <> 'refuse'`
-  const taches = await sql`select qui from ${t('taches')} where fait_le is null and echeance <= ${auj}::date`
+  const taches = await sql`
+    select qui, titre, echeance::text as echeance, rappel_a::text as rappel_a from ${t('taches')}
+    where fait_le is null and echeance <= ${auj}::date order by rappel_a nulls first`
   const menus = await sql`select titre, moment from ${t('menus')} where le = ${auj}::date order by moment`
   const entretiens = await sql`
     select titre, rappel from ${t('entretien')}
@@ -244,8 +302,14 @@ async function matin(p: string, force: boolean) {
     }
     const questions = evenements.filter((e) => e.statut === 'question' && e.question_a === m.cle).length
     if (questions) lignes.push(`❓ ${questions} question${questions > 1 ? 's attendent' : ' attend'} votre réponse`)
-    const nTaches = taches.filter((x) => x.qui === null || x.qui === m.cle).length
-    if (nTaches) lignes.push(`✅ ${nTaches} tâche${nTaches > 1 ? 's' : ''} pour aujourd'hui`)
+    const sesTaches = taches.filter((x) => x.qui === null || x.qui === m.cle)
+    const duJour = sesTaches.filter((x) => x.echeance === auj)
+    if (duJour.length) {
+      const liste = duJour.slice(0, 4).map((x) => `${x.titre}${x.rappel_a ? ` (${heureCourte(x.rappel_a)})` : ''}`).join(', ')
+      lignes.push(`📝 Aujourd'hui : ${liste}${duJour.length > 4 ? ` et ${duJour.length - 4} autre${duJour.length > 5 ? 's' : ''}` : ''}`)
+    }
+    const enRetard = sesTaches.length - duJour.length
+    if (enRetard) lignes.push(`⏰ ${enRetard} tâche${enRetard > 1 ? 's' : ''} en retard`)
     for (const r of menus) lignes.push(`🍽️ Au menu ce ${r.moment === 'midi' ? 'midi' : 'soir'} : ${r.titre}`)
     for (const e of entretiens) lignes.push(`🔧 ${e.titre}${e.rappel ? ` : ${e.rappel}` : ''}`)
     for (const g of garanties) {
@@ -304,11 +368,13 @@ Deno.serve(async (req) => {
     if (!egal(secret, k.appel)) return json({ erreur: 'Non autorisé' }, 401)
 
     if (corps.type === 'matin') return json(await matin(p, corps.force === true))
+    if (corps.type === 'rappels') return json(await rappels(p))
     const operation = corps.operation as string
     const nouveau = corps.nouveau as Ligne
     const ancien = (corps.ancien as Ligne | null) ?? null
     if (corps.table === `${p}messages`) return json(await surMessage(p, operation, nouveau, ancien))
     if (corps.table === `${p}evenements`) return json(await surEvenement(p, operation, nouveau, ancien))
+    if (corps.table === `${p}taches`) return json(await surTache(p, operation, nouveau))
     return json({ ignore: true })
   } catch (e) {
     console.error(e)

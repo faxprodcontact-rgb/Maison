@@ -6,6 +6,7 @@ export type Membre = {
   notif_mots?: boolean
   notif_agenda?: boolean
   notif_matin?: boolean
+  notif_taches?: boolean
 }
 
 export type Article = {
@@ -42,6 +43,9 @@ export type Tache = {
   cree_le: string
   piece: string | null
   genre: GenreTache
+  rappel_a?: string | null
+  rappel_envoye_le?: string | null
+  cree_par?: string | null
 }
 
 export type GenreTache = 'faire' | 'reparer' | 'acheter' | 'idee'

@@ -35,7 +35,7 @@ export function App() {
 
 function Maison({ session }: { session: Session }) {
   const { lignes: membres, erreur, recharger } = useLive<Membre>('membres', () =>
-    table('membres').select('cle, prenom, couleur, user_id, notif_mots, notif_agenda, notif_matin').order('cle', { ascending: false }),
+    table('membres').select('cle, prenom, couleur, user_id, notif_mots, notif_agenda, notif_matin, notif_taches').order('cle', { ascending: false }),
   )
 
   const foyer = useMemo<Foyer | null>(() => {

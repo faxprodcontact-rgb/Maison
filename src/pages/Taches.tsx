@@ -1,5 +1,6 @@
 import { ChevronRight, Plus } from 'lucide-react'
 import { type FormEvent, useMemo, useState } from 'react'
+import { PenseBete } from '../components/PenseBete'
 import { PlanMaison } from '../components/PlanMaison'
 import { Sheet } from '../components/Sheet'
 import { FormulaireTache, LigneTache, useTerminerTache } from '../components/Taches'
@@ -12,11 +13,11 @@ import { table } from '../lib/supabase'
 import type { GenreTache, Tache } from '../lib/types'
 import { useLive } from '../lib/useLive'
 
-type Onglet = 'plan' | 'autres' | 'tout'
+type Onglet = 'pense' | 'plan' | 'autres' | 'tout'
 
 export function Taches() {
   const { membres } = useFoyer()
-  const [onglet, setOnglet] = useState<Onglet>('plan')
+  const [onglet, setOnglet] = useState<Onglet>('pense')
   const [filtre, setFiltre] = useState('tout')
   const [pieceOuverte, setPieceOuverte] = useState<Piece | null>(null)
   const [edition, setEdition] = useState<Partial<Tache> | null>(null)
@@ -53,6 +54,7 @@ export function Taches() {
           valeur={onglet}
           changer={setOnglet}
           options={[
+            { valeur: 'pense', libelle: 'Pense-bête' },
             { valeur: 'plan', libelle: 'Plan' },
             { valeur: 'autres', libelle: 'Autres pièces' },
             { valeur: 'tout', libelle: 'Tout' },
@@ -62,6 +64,16 @@ export function Taches() {
 
       {erreur && <Erreur message={erreur} />}
       {!lignes && !erreur && <Chargement />}
+
+      {lignes && onglet === 'pense' && (
+        <PenseBete
+          taches={lignes}
+          terminer={terminer}
+          modifier={setEdition}
+          ajouterLocal={(nouvelles) => setLignes((l) => [...(l ?? []), ...nouvelles])}
+          recharger={() => void recharger()}
+        />
+      )}
 
       {lignes && onglet === 'plan' && (
         <div className="px-3">
@@ -159,6 +171,7 @@ function FichePiece({
   recharger: () => void
 }) {
   const toast = useToast()
+  const { moi } = useFoyer()
   const [titre, setTitre] = useState('')
   const [genre, setGenre] = useState<GenreTache>('faire')
   const [voirFaites, setVoirFaites] = useState(false)
@@ -185,7 +198,7 @@ function FichePiece({
       cree_le: new Date().toISOString(),
     }
     ajouterLocal(nouvelle)
-    const { error } = await table('taches').insert({ id: nouvelle.id, titre: nouvelle.titre, piece: piece.cle, genre })
+    const { error } = await table('taches').insert({ id: nouvelle.id, titre: nouvelle.titre, piece: piece.cle, genre, cree_par: moi.cle })
     if (error) {
       toast(`Non enregistré : ${error.message}`)
       recharger()

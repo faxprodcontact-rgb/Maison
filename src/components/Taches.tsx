@@ -1,4 +1,4 @@
-import { Check, Repeat } from 'lucide-react'
+import { Bell, Check, Repeat } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { ajouterJours, aujourdhui, delai, depuisISO, ecartJours, jourRelatif, majuscule, phrase } from '../lib/dates'
 import { useFoyer } from '../lib/foyer'
@@ -117,7 +117,7 @@ export function LigneTache({
             )}
             <span>{tache.titre}</span>
           </span>
-          {(quand || repetition || p) && (
+          {(quand || repetition || p || tache.rappel_a) && (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.85rem] text-encre-2">
               {p && (
                 <span className="inline-flex items-center gap-1">
@@ -131,6 +131,12 @@ export function LigneTache({
                   {repetition}
                 </span>
               )}
+              {tache.rappel_a && !fait && (
+                <span className="inline-flex items-center gap-1 text-encre-3">
+                  <Bell size={13} />
+                  {heureCourte(tache.rappel_a)}
+                </span>
+              )}
             </span>
           )}
         </span>
@@ -138,6 +144,12 @@ export function LigneTache({
       </button>
     </li>
   )
+}
+
+export function heureCourte(h: string | null | undefined): string {
+  if (!h) return ''
+  const [hh, mm] = h.split(':')
+  return mm === '00' ? `${Number(hh)} h` : `${Number(hh)} h ${mm}`
 }
 
 function ceWeekEnd(): string {
@@ -165,9 +177,10 @@ export function FormulaireTache({
   appliquer: Appliquer
   recharger: () => void
 }) {
-  const { membres } = useFoyer()
+  const { membres, moi } = useFoyer()
   const toast = useToast()
   const [titre, setTitre] = useState(tache.titre ?? '')
+  const [rappel, setRappel] = useState(tache.rappel_a?.slice(0, 5) ?? '')
   const [qui, setQui] = useState<string>(tache.qui ?? '')
   const [echeance, setEcheance] = useState<string>(tache.id ? (tache.echeance ?? '') : (tache.echeance ?? aujourdhui()))
   const [repetition, setRepetition] = useState<Repetition>(tache.repetition ?? 'aucune')
@@ -197,6 +210,7 @@ export function FormulaireTache({
       notes: notes.trim() || null,
       piece: pieceChoisie || null,
       genre,
+      rappel_a: rappel && (echeance || repetition !== 'aucune') ? rappel : null,
     }
     fini()
     if (existante && tache.id) {
@@ -207,7 +221,7 @@ export function FormulaireTache({
         recharger()
       }
     } else {
-      const { error } = await table('taches').insert(donnees)
+      const { error } = await table('taches').insert({ ...donnees, cree_par: moi.cle })
       if (error) toast(`Tâche non enregistrée : ${error.message}`)
       else toast('Tâche ajoutée.')
       recharger()
@@ -273,6 +287,17 @@ export function FormulaireTache({
           aria-label="Date"
         />
       </Groupe>
+
+      <Champ etiquette="Rappel sur le téléphone (facultatif)" aide="Le jour de l'échéance, à cette heure-là.">
+        <span className="flex items-center gap-3">
+          <input type="time" className="champ !w-36" value={rappel} onChange={(e) => setRappel(e.target.value)} disabled={!echeance && repetition === 'aucune'} />
+          {rappel && (
+            <button type="button" className="text-[0.9rem] font-semibold underline underline-offset-4" onClick={() => setRappel('')}>
+              Pas de rappel
+            </button>
+          )}
+        </span>
+      </Champ>
 
       <Groupe etiquette="Revient">
         <Choix

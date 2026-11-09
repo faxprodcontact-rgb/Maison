@@ -19,8 +19,9 @@ function useEtat() {
   return { etat, actualiser }
 }
 
-const CHOIX: { cle: 'notif_mots' | 'notif_agenda' | 'notif_matin'; nom: string; aide: string }[] = [
+const CHOIX: { cle: 'notif_mots' | 'notif_agenda' | 'notif_matin' | 'notif_taches'; nom: string; aide: string }[] = [
   { cle: 'notif_mots', nom: 'Petits mots', aide: 'Quand on vous laisse un mot, ou qu’on réagit au vôtre.' },
+  { cle: 'notif_taches', nom: 'Pense-bête', aide: 'Quand on vous ajoute quelque chose à faire, puis le rappel le jour même.' },
   { cle: 'notif_agenda', nom: 'Agenda', aide: 'Questions à répondre, réponses, nouveaux rendez-vous.' },
   { cle: 'notif_matin', nom: 'Résumé du matin', aide: 'À 8 h : rendez-vous, tâches, menu, entretiens à prévoir.' },
 ]
